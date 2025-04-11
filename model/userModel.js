@@ -20,6 +20,22 @@ const userSchema = mongoose.Schema({
 token:{
 	type: String,
 	},
+	verificationCode: {
+		type: String,
+	},
+	verified: {
+		type: Boolean,
+		default: false,
+	},
+	createdAt: {
+		type: Date,
+		default: Date.now,
+	},
+	updatedAt: {
+		type: Date,
+		default: Date.now,
+	},
+
 },{
 	versionKey: false,
 });

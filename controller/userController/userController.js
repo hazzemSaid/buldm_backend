@@ -95,8 +95,64 @@ const resendVerificationCode = asyncWrapper(async (req, res, next) => {
     message: "verification code sent to your email",
   });
 });
+const forgetpassword = asyncWrapper(async (req, res, next) => {
+  const error = validationResult(req);
+  if (!error.isEmpty()) {
+    const err = new Error("validation error");
+    err.statuscode = 422;
+    err.data = error.array();
+    return next(err);
+  }
+  const { email } = req.body;
+  const user = await userModel.findOne({ email: email });
+  if (!user) {
+    const err = new Error("user not found");
+    err.statuscode = 404;
+    return next(err);
+  }
+  const code = Math.floor(100000 + Math.random() * 900000);
+  user.verificationCode = code;
+  await user.save();
+  const mail = await sendVerificationEmail(email, code);
+  return res.status(200).json({
+    success: true,
+    message: "verification code sent to your email",
+  });
 
-const login = asyncWrapper(async (req, res) => {
+}
+);
+const resetpassword = asyncWrapper(async (req, res, next) => {
+  const error = validationResult(req);
+  if (!error.isEmpty()) {
+    const err = new Error("validation error");
+    err.statuscode = 422;
+    err.data = error.array();
+    return next(err);
+  }
+  const { email, password, code } = req.body;
+  const user = await userModel.findOne({ email: email });
+  if (!user) {
+    const err = new Error("user not found");
+    err.statuscode = 404;
+    return next(err);
+  }
+  if (user.verificationCode !== code) {
+    const err = new Error("invalid verification code");
+    err.statuscode = 401;
+    return next(err);
+  }
+  const hashedpassword = await bcrypt.hashSync(password, 10);
+  user.password = hashedpassword;
+  user.verificationCode = null;
+  user.verified = true;
+  
+  await user.save();
+  return res.status(200).json({
+    success: true,
+    message: "password reset successfully",
+  });
+});
+const login = asyncWrapper(async (req, res, next) => {
   const error = validationResult(req);
   if (!error.isEmpty()) {
     const err = new Error("validation error");
@@ -112,7 +168,7 @@ const login = asyncWrapper(async (req, res) => {
     err.statuscode = 404;
     return next(err);
   }
-
+  
   const matchpassword = await bcrypt.compare(password, user.password);
   if (!matchpassword) {
     const err = new Error("invalid password");
@@ -160,4 +216,6 @@ module.exports = {
   refreshToken,
   verifyEmail,
   resendVerificationCode,
+  forgetpassword,
+  resetpassword,
 };

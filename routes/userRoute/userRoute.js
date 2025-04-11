@@ -18,6 +18,14 @@ const verifyEmailValidation = [
 const resendVerificationCode = [
 	body("email").isEmail().withMessage("email is required"),
 ];
+const forgotPasswordValidation = [
+	body("email").isEmail().withMessage("email is required"),
+];
+const resetPasswordValidation = [
+	body("email").isEmail().withMessage("email is required"),
+	body("code").notEmpty().withMessage("code is required"),
+	body("password").notEmpty().withMessage("password is required"),
+];
 userRoute
 	.post("/register", registerValidation, controller.register)
 	.post("/login", loginValidation, controller.login)
@@ -27,6 +35,8 @@ userRoute
 		"/resendverificationcode",
 		resendVerificationCode,
 		controller.resendVerificationCode
-	);
+	)
+	.post("/forgotpassword", forgotPasswordValidation, controller.forgetpassword)
+	.post("/resetpassword", resetPasswordValidation, controller.resetpassword);
 
 module.exports = userRoute;

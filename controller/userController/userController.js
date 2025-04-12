@@ -147,7 +147,7 @@ const resetpassword = asyncWrapper(async (req, res, next) => {
   user.password = hashedpassword;
   user.verificationCode = null;
   user.verified = true;
-  
+
   await user.save();
   return res.status(200).json({
     success: true,
@@ -170,7 +170,11 @@ const login = asyncWrapper(async (req, res, next) => {
     err.statuscode = 404;
     return next(err);
   }
-  
+  if (user.verified === false) {
+    const err = new Error("user not verified");
+    err.statuscode = 401;
+    return next(err);
+  }
   const matchpassword = await bcrypt.compare(password, user.password);
   if (!matchpassword) {
     const err = new Error("invalid password");

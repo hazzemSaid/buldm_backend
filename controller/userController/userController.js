@@ -88,6 +88,11 @@ const resendVerificationCode = asyncWrapper(async (req, res, next) => {
     err.statuscode = 404;
     return next(err);
   }
+  if (user.verified) {
+    const err = new Error("user already verified");
+    err.statuscode = 422;
+    return next(err);
+  }
   const code = Math.floor(100000 + Math.random() * 900000);
   user.verificationCode = code;
   await user.save();

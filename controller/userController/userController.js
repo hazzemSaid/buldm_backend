@@ -1,7 +1,9 @@
 const asyncWrapper = require("../../middleware/asyncwrapper");
 const userModel = require("../../model/userModel");
 const { validationResult } = require("express-validator");
-const bcrypt = require("bcrypt");
+
+const bcrypt = require('bcryptjs');
+
 const { sendVerificationEmail } = require("../../utils/verificationemail");
 const JWT = require("jsonwebtoken");
 const register = asyncWrapper(async (req, res, next) => {

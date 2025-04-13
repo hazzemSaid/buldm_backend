@@ -3,6 +3,11 @@ const userModel = require("../../model/userModel");
 const getUser = asyncwrapper(async (req, res, next) => {
 	const id = req.params.id;
 	const user = await userModel.findById(id);
+	if (!id) {
+		const err = new Error("user id is required");
+		err.statuscode = 400;
+		return next(err);
+	}
 	if (!user) {
 		const err = new Error("user not found");
 		err.statuscode = 404;

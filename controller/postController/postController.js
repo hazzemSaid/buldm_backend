@@ -80,6 +80,74 @@ const Createpost = asyncWrapper(async (req, res, next) => {
 		data: newpost,
 	});
 });
+const getPostById = asyncWrapper(async (req, res, next) => {
+	const postId = req.params.id;
+	if (!postId) {
+		return res.status(400).json({
+			success: false,
+			message: "Post ID is required",
+		});
+	}
+
+	const post = await postModel.findById(postId);
+	if (!post) {
+		return res.status(404).json({
+			success: false,
+			message: "Post not found",
+		});
+	}
+
+	return res.status(200).json({
+		success: true,
+		message: "Post retrieved successfully",
+		data: post,
+	});
+});
+const getAllPosts = asyncWrapper(async (req, res, next) => {
+	const posts = await postModel.find();
+	if (!posts) {
+		const error = new Error("posts not found");
+		error.statuscode = 404;
+		return next(error);
+	}
+
+	return res.status(200).json({
+		success: true,
+		message: "Posts retrieved successfully",
+		data: posts,
+	});
+});
+const deletePostById = asyncWrapper(async (req, res, next) => {
+
+	const postId = req.params.id;
+	if (!postId) {
+		const error = new Error("Post ID is required");
+		error.statuscode = 400;
+		return next(error);
+	}
+
+	const post = await postModel.findByIdAndDelete(postId);
+	if (!post) {
+		return res.status(404).json({
+			success: false,
+			message: "Post not found",
+		});
+	}
+	if (post.user?._id.toString() !== req.user._id.toString()) {
+		const error = new Error("You are not authorized to delete this post");
+		error.statuscode = 403;
+		return next(error);
+	}
+
+	return res.status(200).json({
+		success: true,
+		message: "Post deleted successfully",
+	});
+});
+
 module.exports = {
-	Createpost
+	Createpost,
+	getPostById,
+	getAllPosts
+	, deletePostById
 }

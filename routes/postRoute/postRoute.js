@@ -21,6 +21,8 @@ Router.post(
 	postValidation,
 	verifyToken, // Verify token middleware
 	PostController.Createpost
-);
-
+)
+	.get("/:id", verifyToken, PostController.getPostById)
+	.get("/", verifyToken, PostController.getAllPosts)
+	.delete("/:id", verifyToken, PostController.deletePostById);
 module.exports = Router;

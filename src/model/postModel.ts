@@ -20,25 +20,14 @@ const PostSchema = new mongoose.Schema(
     ,
 
     location: {
-      coordinates: {
-        type: {
-          type: String,
-          enum: ['Point'],
-          default: 'Point',
-        },
-        coordinates: {
-          type: [Number], // [longitude, latitude]
-          //i need can be empty
-
-        },
-      },
+      type: { type: String, enum: ["Point"], required: true },
+      coordinates: { type: [Number], required: true },
       placeName: {
         type: String,
         default: '',
         trim: true,
       },
     },
-
     status: {
       type: String,
       enum: ['lost', 'found', 'claimed'],
@@ -102,3 +91,14 @@ PostSchema.index({ user: 1 }); // إنشاء فهرس عادي للمستخدم
 PostSchema.index({ category: 1 }); // إنشاء فهرس عادي للفئة
 
 export default mongoose.model('Post', PostSchema);
+/*
+location: {
+  type: { type: String, enum: ["Point"], required: true },
+  coordinates: { type: [Number], required: true }
+    placeName: {
+        type: String,
+        default: '',
+        trim: true,
+      },
+}
+*/

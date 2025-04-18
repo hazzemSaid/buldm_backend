@@ -5,13 +5,11 @@ import PostController from "../../controller/postController/postController";
 import { postValidation } from "../../utils/validation";
 // إعداد التخزين للصور باستخدام multer
 const storage = multer.diskStorage({
-	destination: function (_req, _file, cb) {
-		cb(null, path.join(__dirname, "../../uploads"));
-	},
-	filename: function (_req, file, cb) {
-		cb(null, "-" + Date.now() + path.extname(file.originalname));
-	},
-});
+		destination: 'uploads/',
+		filename: function (_req, file, cb) {
+			cb(null, "-" + Date.now() + path.extname(file.originalname));
+		},
+	});
 
 const upload = multer({ storage });
 

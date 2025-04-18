@@ -1,9 +1,10 @@
 import { NextFunction, Request, Response } from "express";
 import { validationResult } from "express-validator";
+import fs from 'fs';
 import asyncWrapper from "../../middleware/asyncwrapper";
 import postModel from "../../model/postModel";
+import cloudinary from '../../utils/cloudinaryService';
 import ErrorHandler from "../../utils/error";
-
 // Define interface for location and predicted items
 interface Location {
 	coordinates?: [string, string];
@@ -23,7 +24,6 @@ interface RequestWithFiles extends Request {
 
 const createPost = asyncWrapper(async (req: any, res: Response, next: NextFunction) => {
 	const errors = validationResult(req);
-	console.log(req.body["title"]);
 
 	if (!errors.isEmpty()) {
 		const err = ErrorHandler.createError("Validation error", 422, errors.array());
@@ -61,16 +61,26 @@ const createPost = asyncWrapper(async (req: any, res: Response, next: NextFuncti
 			category: predictedItems[0].category || "",
 		}
 		: null;
-
+	const files = req.files as Express.Multer.File[];
+	let images_RUL: string[] = [];
+	for (let i = 0; i < files.length; i++) {
+		const upload_image: any = await cloudinary.uploader.upload(files[i].path, {
+			folder: "posts",
+		});
+		images_RUL.push(upload_image.secure_url);
+		fs.unlinkSync(req.files[i].path);
+	}
+	// Delete the file after uploading to Cloudinary
 	const postData = {
 		title,
 		description,
-		images: req.files ? req.files.map((file: { filename: string }) => "/" + file.filename) : null,
+		images: images_RUL,
 		location: {
 			type: "Point",
 			coordinates: coordinates,  // Assign coordinates if valid, else it will be null
 			placeName: placeName
 		},
+
 		status,
 		category,
 		predictedItems: predictedItem ? [predictedItem] : [],

@@ -193,6 +193,12 @@ const refreshToken = asyncWrapper(async (req: any, res, next) => {
 
   const { email } = req.user;
   const user = await userModel.findOne({ email: email });
+  const token: string = req.headers.authorization?.split(" ")[1] as string;
+  if (token != user?.token) {
+    const err = ErrorHandler.createError("this is not your token", 401, error.array());
+    return next(err);
+  }
+
 
   const newToken = JWT.sign(
     { email: user?.email, _id: user?._id },

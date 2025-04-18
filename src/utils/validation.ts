@@ -1,42 +1,38 @@
-const { body } = require("express-validator");
-const registerValidation = [
+import { body } from "express-validator";
+
+export const registerValidation = [
 	body("name").notEmpty().withMessage("name is required"),
 	body("email").isEmail().withMessage("email is required"),
 	body("password").notEmpty().withMessage("password is required"),
 ];
-const loginValidation = [
+
+export const loginValidation = [
 	body("email").isEmail().withMessage("email is required"),
 	body("password").notEmpty().withMessage("password is required"),
 ];
-const verifyEmailValidation = [
+
+export const verifyEmailValidation = [
 	body("email").isEmail().withMessage("email is required"),
 	body("code").notEmpty().withMessage("code is required"),
 ];
-const resendVerificationCode = [
+
+export const resendVerificationCode = [
 	body("email").isEmail().withMessage("email is required"),
 ];
-const forgotPasswordValidation = [
+
+export const forgotPasswordValidation = [
 	body("email").isEmail().withMessage("email is required"),
 ];
-const resetPasswordValidation = [
+
+export const resetPasswordValidation = [
 	body("email").isEmail().withMessage("email is required"),
 	body("code").notEmpty().withMessage("code is required"),
 	body("password").notEmpty().withMessage("password is required"),
 ];
-const postValidation = [
+
+export const postValidation = [
 	body("title").notEmpty().withMessage("title is required"),
 	body("description").notEmpty().withMessage("description is required"),
-	// body('location').notEmpty().withMessage('location is required'),
 	body("status").notEmpty().withMessage("status is required"),
-	// body('contactInfo').notEmpty().withMessage('contactInfo is required')
+	// يمكن إضافة location و contactInfo في المستقبل إذا صارت مطلوبة
 ];
-module.exports = {
-	registerValidation,
-	loginValidation,
-	verifyEmailValidation,
-	resendVerificationCode,
-	forgotPasswordValidation,
-	resetPasswordValidation,
-	postValidation,
-
-}

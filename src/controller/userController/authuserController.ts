@@ -1,27 +1,28 @@
-const asyncWrapper = require("../../middleware/asyncwrapper");
-const userModel = require("../../model/userModel");
-const { validationResult } = require("express-validator");
+import bcrypt from "bcryptjs";
+import devenv from "dotenv";
+import { validationResult } from "express-validator";
+import JWT from "jsonwebtoken";
+import asyncWrapper from "../../middleware/asyncwrapper";
+import userModel from "../../model/userModel";
+import ErrorHandler from "../../utils/error";
+import { sendVerificationEmail } from "../../utils/verificationemail";
+devenv.config();
+const JWT_SECRET = process.env.JWT_SECRET as string;
 
-const bcrypt = require('bcryptjs');
-
-const { sendVerificationEmail } = require("../../utils/verificationemail");
-const JWT = require("jsonwebtoken");
 const register = asyncWrapper(async (req, res, next) => {
   const { name, email, password } = req.body;
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
-    const err = new Error("validation error");
-    err.statuscode = 422;
-    err.data = errors.array();
+    const err = ErrorHandler.createError("validation error", 422, errors.array());
     return next(err);
   }
   const olduser = await userModel.findOne({ email: email });
   if (olduser) {
-    const err = new Error("user already exists");
-    err.statuscode = 422;
+    const err = ErrorHandler.createError("user already exists", 422, errors.array());
     return next(err);
   }
-  const code = Math.floor(100000 + Math.random() * 900000);
+  const code: string = Math.floor(100000 + Math.random() * 900000).toString();
+
   const mail = await sendVerificationEmail(email, code);
 
   const hashedpassword = await bcrypt.hashSync(password, 10);
@@ -35,7 +36,7 @@ const register = asyncWrapper(async (req, res, next) => {
   });
   const token = JWT.sign(
     { email: newuser.email, _id: newuser._id },
-    process.env.JWT_SECRET,
+    JWT_SECRET,
     { expiresIn: "1h" }
   );
   newuser.token = token;
@@ -48,21 +49,18 @@ const register = asyncWrapper(async (req, res, next) => {
 const verifyEmail = asyncWrapper(async (req, res, next) => {
   const error = validationResult(req);
   if (!error.isEmpty()) {
-    const err = new Error("validation error");
-    err.statuscode = 422;
-    err.data = error.array();
+    const err = ErrorHandler.createError("validation error", 422, error.array());
     return next(err);
   }
   const { email, code } = req.body;
   const user = await userModel.findOne({ email: email });
   if (!user) {
-    const err = new Error("user not found");
-    err.statuscode = 404;
+    const err = ErrorHandler.createError("user not found", 404, error.array());
+
     return next(err);
   }
   if (user.verificationCode !== code) {
-    const err = new Error("invalid verification code");
-    err.statuscode = 401;
+    const err = ErrorHandler.createError("verification code is invalid", 401, error.array());
     return next(err);
   }
   user.verified = true;
@@ -76,24 +74,22 @@ const verifyEmail = asyncWrapper(async (req, res, next) => {
 const resendVerificationCode = asyncWrapper(async (req, res, next) => {
   const error = validationResult(req);
   if (!error.isEmpty()) {
-    const err = new Error("validation error");
-    err.statuscode = 422;
-    err.data = error.array();
+    const err = ErrorHandler.createError("validation error", 422, error.array());
+
     return next(err);
   }
   const { email } = req.body;
   const user = await userModel.findOne({ email: email });
   if (!user) {
-    const err = new Error("user not found");
-    err.statuscode = 404;
+    const err = ErrorHandler.createError("user not found", 404, error.array());
     return next(err);
   }
   if (user.verified) {
-    const err = new Error("user already verified");
-    err.statuscode = 422;
+    const err = ErrorHandler.createError("user not found", 404, error.array());
+
     return next(err);
   }
-  const code = Math.floor(100000 + Math.random() * 900000);
+  const code: string = Math.floor(100000 + Math.random() * 900000).toString();
   user.verificationCode = code;
   await user.save();
   const mail = await sendVerificationEmail(email, code);
@@ -102,22 +98,19 @@ const resendVerificationCode = asyncWrapper(async (req, res, next) => {
     message: "verification code sent to your email",
   });
 });
-const forgetpassword = asyncWrapper(async (req, res, next) => {
+const forgotPassword = asyncWrapper(async (req, res, next) => {
   const error = validationResult(req);
   if (!error.isEmpty()) {
-    const err = new Error("validation error");
-    err.statuscode = 422;
-    err.data = error.array();
+    const err = ErrorHandler.createError("validation error", 422, error.array());
     return next(err);
   }
   const { email } = req.body;
   const user = await userModel.findOne({ email: email });
   if (!user) {
-    const err = new Error("user not found");
-    err.statuscode = 404;
+    const err = ErrorHandler.createError(" user not found", 404, error.array());
     return next(err);
   }
-  const code = Math.floor(100000 + Math.random() * 900000);
+  const code: string = Math.floor(100000 + Math.random() * 900000).toString();
   user.verificationCode = code;
   await user.save();
   const mail = await sendVerificationEmail(email, code);
@@ -131,21 +124,18 @@ const forgetpassword = asyncWrapper(async (req, res, next) => {
 const resetpassword = asyncWrapper(async (req, res, next) => {
   const error = validationResult(req);
   if (!error.isEmpty()) {
-    const err = new Error("validation error");
-    err.statuscode = 422;
-    err.data = error.array();
+    const err = ErrorHandler.createError("validation error", 422, error.array());
     return next(err);
   }
   const { email, password, code } = req.body;
   const user = await userModel.findOne({ email: email });
   if (!user) {
-    const err = new Error("user not found");
-    err.statuscode = 404;
+    const err = ErrorHandler.createError(" user not found", 422, error.array());
+
     return next(err);
   }
   if (user.verificationCode !== code) {
-    const err = new Error("invalid verification code");
-    err.statuscode = 401;
+    const err = ErrorHandler.createError(" verification code is invalid", 422, error.array());
     return next(err);
   }
   const hashedpassword = await bcrypt.hashSync(password, 10);
@@ -162,33 +152,29 @@ const resetpassword = asyncWrapper(async (req, res, next) => {
 const login = asyncWrapper(async (req, res, next) => {
   const error = validationResult(req);
   if (!error.isEmpty()) {
-    const err = new Error("validation error");
-    err.statuscode = 422;
-    err.data = error.array();
+    const err = ErrorHandler.createError("validation error", 422, error.array());
     return next(err);
   }
   const { email, password } = req.body;
 
   const user = await userModel.findOne({ email: email });
   if (!user) {
-    const err = new Error("user not found");
-    err.statuscode = 404;
+
+    const err = ErrorHandler.createError("user not found", 422, error.array());
     return next(err);
   }
   if (user.verified === false) {
-    const err = new Error("user not verified");
-    err.statuscode = 401;
+    const err = ErrorHandler.createError("user not verified", 422, error.array());
     return next(err);
   }
   const matchpassword = await bcrypt.compare(password, user.password);
   if (!matchpassword) {
-    const err = new Error("invalid password");
-    err.statuscode = 401;
+    const err = ErrorHandler.createError("password is incorrect", 422, error.array());
     return next(err);
   }
   const token = JWT.sign(
     { email: user.email, _id: user._id },
-    process.env.JWT_SECRET,
+    JWT_SECRET,
     { expiresIn: "1h" }
   );
   user.token = token;
@@ -198,35 +184,36 @@ const login = asyncWrapper(async (req, res, next) => {
     user: user,
   });
 });
-const refreshToken = asyncWrapper(async (req, res, next) => {
+const refreshToken = asyncWrapper(async (req: any, res, next) => {
   const error = validationResult(req);
   if (!error.isEmpty()) {
-    const err = new Error("validation error");
-    err.statuscode = 422;
-    err.data = error.array();
+    const err = ErrorHandler.createError("validation error", 422, error.array());
     return next(err);
   }
 
   const { email } = req.user;
   const user = await userModel.findOne({ email: email });
 
-  const newtoken = JWT.sign(
-    { email: user.email, _id: user._id },
-    process.env.JWT_SECRET,
+  const newToken = JWT.sign(
+    { email: user?.email, _id: user?._id },
+    JWT_SECRET,
     { expiresIn: "7d" }
   );
-  user.token = newtoken;
+  if (user) {
+    user.token = newToken;
+  }
+  await user?.save();
   return res.status(200).json({
     success: true,
     user: user,
   });
 });
-module.exports = {
+export default {
   register,
-  login,
-  refreshToken,
   verifyEmail,
   resendVerificationCode,
-  forgetpassword,
+  forgotPassword,
   resetpassword,
+  login,
+  refreshToken
 };

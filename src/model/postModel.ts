@@ -1,5 +1,4 @@
-const mongoose = require('mongoose');
-
+import mongoose from "mongoose";
 const PostSchema = new mongoose.Schema(
   {
     title: {
@@ -72,7 +71,7 @@ const PostSchema = new mongoose.Schema(
 
 
 
-    user: {
+    user_id: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
       required: true,
@@ -95,13 +94,11 @@ const PostSchema = new mongoose.Schema(
     },
   }
 );
-
 PostSchema.index({ 'location.coordinates': '2dsphere' });// إنشاء فهرس مكاني للبحث عن المواقع
 PostSchema.index({ title: 'text', description: 'text' }); // إنشاء فهرس نصي للبحث عن العناوين والأوصاف
 PostSchema.index({ status: 1 }); // إنشاء فهرس عادي للحالة
-PostSchema.index({ 'location.coordinates': '2dsphere' });
 PostSchema.index({ createdAt: -1 });// إنشاء فهرس عكسي لتاريخ الإنشاء
 PostSchema.index({ user: 1 }); // إنشاء فهرس عادي للمستخدم
 PostSchema.index({ category: 1 }); // إنشاء فهرس عادي للفئة
 
-module.exports = mongoose.model('Post', PostSchema);
+export default mongoose.model('Post', PostSchema);

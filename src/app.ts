@@ -5,9 +5,10 @@ import express, { NextFunction, Request, Response } from "express";
 import mongoose from "mongoose";
 import path from "path";
 import verifyToken from "./middleware/verifyToken";
+import sendnotificationRoute from "./routes/notificationRoute/sendnotificationRoute";
 import postRoute from "./routes/postRoute/postRoute";
 import userRoute from "./routes/userRoute/userRoute";
-
+import { ICustomError } from "./utils/error";
 dotenv.config();
 
 const app = express();
@@ -35,10 +36,11 @@ mongoose.connect(url)
 // Routes
 app.use("/api/v1/user", userRoute);
 app.use("/api/v1/post", verifyToken, postRoute);
-
+app.use("/api/v1/notification", sendnotificationRoute.notificationRouter);
 // Error handling middleware
-app.use((err: any, req: Request, res: Response, next: NextFunction) => {
-	res.status(err.statusCode ?? 404).json({
+
+app.use((err: ICustomError, req: Request, res: Response, next: NextFunction) => {
+	res.status(err.statuscode ?? 404).json({
 		status: "error",
 		error: err.message ?? "something went wrong",
 		statuscode: err.statuscode ?? 404,

@@ -1,4 +1,4 @@
-import mongoose  from "mongoose";
+import mongoose from "mongoose";
 const userSchema =new  mongoose.Schema({
 	name: {
 		type: String,
@@ -39,5 +39,5 @@ token:{
 },{
 	versionKey: false,
 });
-
+userSchema.index({ username: 1,id : 1 });
 export default mongoose.model('user', userSchema);

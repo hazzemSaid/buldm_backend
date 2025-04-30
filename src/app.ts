@@ -7,6 +7,7 @@ import path from "path";
 import verifyToken from "./middleware/verifyToken";
 import sendnotificationRoute from "./routes/notificationRoute/sendnotificationRoute";
 import postRoute from "./routes/postRoute/postRoute";
+import reportRoute from "./routes/reportRoute/reportRoute";
 import userRoute from "./routes/userRoute/userRoute";
 import { ICustomError } from "./utils/error";
 dotenv.config();
@@ -37,6 +38,7 @@ mongoose.connect(url)
 app.use("/api/v1/user", userRoute);
 app.use("/api/v1/post", verifyToken, postRoute);
 app.use("/api/v1/notification", sendnotificationRoute.notificationRouter);
+app.use("/api/v1/report",reportRoute );
 // Error handling middleware
 
 app.use((err: ICustomError, req: Request, res: Response, next: NextFunction) => {

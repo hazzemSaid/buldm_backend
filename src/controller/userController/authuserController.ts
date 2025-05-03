@@ -2,6 +2,7 @@ import bcrypt from "bcryptjs";
 import devenv from "dotenv";
 import { validationResult } from "express-validator";
 import JWT from "jsonwebtoken";
+import mongoose from "mongoose";
 import asyncWrapper from "../../middleware/asyncwrapper";
 import userModel from "../../model/userModel";
 import ErrorHandler from "../../utils/error";
@@ -10,7 +11,7 @@ devenv.config();
 const JWT_SECRET = process.env.JWT_SECRET as string;
 
 const register = asyncWrapper(async (req, res, next) => {
-  const { name, email, password } = req.body;
+  const { name, email, password, role } = req.body;
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
     const err = ErrorHandler.createError("validation error", 422, errors.array());
@@ -33,9 +34,13 @@ const register = asyncWrapper(async (req, res, next) => {
     createdAt: Date.now(),
     updatedAt: Date.now(),
     verificationCode: code,
+
   });
+  if (role) {
+    newuser.role = role;
+  }
   const token = JWT.sign(
-    { email: newuser.email, _id: newuser._id },
+    { email: newuser.email, _id: newuser._id as mongoose.Types.ObjectId, role: newuser.role },
     JWT_SECRET,
     { expiresIn: "1h" }
   );
@@ -44,6 +49,7 @@ const register = asyncWrapper(async (req, res, next) => {
   return res.status(200).json({
     success: true,
     massage: "verification code sent to your email",
+    user: newuser,
   });
 });
 const verifyEmail = asyncWrapper(async (req, res, next) => {
@@ -85,7 +91,7 @@ const resendVerificationCode = asyncWrapper(async (req, res, next) => {
     return next(err);
   }
   if (user.verified) {
-    const err = ErrorHandler.createError("user not found", 404, error.array());
+    const err = ErrorHandler.createError("user already verified", 404, error.array());
 
     return next(err);
   }
@@ -95,7 +101,7 @@ const resendVerificationCode = asyncWrapper(async (req, res, next) => {
   const mail = await sendVerificationEmail(email, code);
   return res.status(200).json({
     success: true,
-    message: "verification code sent to your email",
+    message: "verification code sent to your email,please check your email",
   });
 });
 const forgotPassword = asyncWrapper(async (req, res, next) => {
@@ -116,7 +122,7 @@ const forgotPassword = asyncWrapper(async (req, res, next) => {
   const mail = await sendVerificationEmail(email, code);
   return res.status(200).json({
     success: true,
-    message: "verification code sent to your email",
+    message: "verification code sent to your email, please check your email",
   });
 
 }
@@ -173,7 +179,7 @@ const login = asyncWrapper(async (req, res, next) => {
     return next(err);
   }
   const token = JWT.sign(
-    { email: user.email, _id: user._id },
+    { email: user.email, _id: user._id as mongoose.Types.ObjectId, role: user.role },
     JWT_SECRET,
     { expiresIn: "1h" }
   );
@@ -201,9 +207,9 @@ const refreshToken = asyncWrapper(async (req: any, res, next) => {
 
 
   const newToken = JWT.sign(
-    { email: user?.email, _id: user?._id },
+    { email: user?.email, _id: user?._id as mongoose.Types.ObjectId, role: user?.role },
     JWT_SECRET,
-    { expiresIn: "7d" }
+    { expiresIn: "1h" }
   );
   if (user) {
     user.token = newToken;

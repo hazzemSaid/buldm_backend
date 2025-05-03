@@ -19,26 +19,21 @@ const transport: Transporter = nodemailer.createTransport(
 
 // Sender information
 const sender = {
-  address: "hello@demomailtrap.co",
-  name: "Mailtrap Test",
+  address: "buldm@gmail.com",
+  name: "buldm",
 };
 
 // Define the function to send a verification email
 async function sendVerificationEmail(toEmail: string, code: string): Promise<void> {
   const mailOptions: SendMailOptions = {
-    from: {
-      name: "My App",
-      address: "hello@demomailtrap.co",
-    },
+    from: sender,
     to: toEmail,
     subject: "Verify your account",
     text: `Your verification code is: ${code}`,
   };
 
   try {
-    console.log("Sending email to:", toEmail);
     const info = await transport.sendMail(mailOptions);
-    console.log("Email sent:", info.messageId);
   } catch (error) {
     console.error("Error sending email:", error);
   }

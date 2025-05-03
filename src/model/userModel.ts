@@ -1,15 +1,20 @@
 import mongoose from "mongoose";
-const userSchema =new  mongoose.Schema({
+const userSchema = new mongoose.Schema({
 	name: {
 		type: String,
 		required: true,
+	},
+	role: {
+		type: String,
+		enum: ["admin", "user"],
+		default: "user",
 	}
-	,email: {
+	, email: {
 		type: String,
 		required: true,
 		unique: true
 	}
-	,password: {
+	, password: {
 		type: String,
 		required: true,
 	},
@@ -17,8 +22,8 @@ const userSchema =new  mongoose.Schema({
 		type: String,
 		default: "/image/2024.png",
 	},
-token:{
-	type: String,
+	token: {
+		type: String,
 	},
 	verificationCode: {
 		type: String,
@@ -36,8 +41,8 @@ token:{
 		default: Date.now,
 	},
 
-},{
+}, {
 	versionKey: false,
 });
-userSchema.index({ username: 1,id : 1 });
+userSchema.index({ username: 1, id: 1 });
 export default mongoose.model('user', userSchema);

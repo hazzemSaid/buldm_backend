@@ -6,7 +6,8 @@ import mongoose from "mongoose";
 import asyncWrapper from "../../middleware/asyncwrapper";
 import userModel from "../../model/userModel";
 import ErrorHandler from "../../utils/error";
-import { sendVerificationEmail } from "../../utils/verificationemail";
+import sendemail from "../../utils/mailersend";
+
 devenv.config();
 const JWT_SECRET = process.env.JWT_SECRET as string;
 
@@ -25,7 +26,16 @@ const register = asyncWrapper(async (req, res, next) => {
   }
   const code: string = Math.floor(100000 + Math.random() * 900000).toString();
 
-  const mail = await sendVerificationEmail(email, code);
+  // const mail = await sendVerificationEmail(email, code);
+  try{
+    await sendemail(
+      email,code
+    );
+  }
+  catch (err) {
+    const error = ErrorHandler.createError("error in sending email", 500, err as any);
+    return next(error);
+  }
 
   const hashedpassword = await bcrypt.hashSync(password, 10);
   const newuser = await userModel.create({
@@ -99,7 +109,15 @@ const resendVerificationCode = asyncWrapper(async (req, res, next) => {
   const code: string = Math.floor(100000 + Math.random() * 900000).toString();
   user.verificationCode = code;
   await user.save();
-  const mail = await sendVerificationEmail(email, code);
+  try {
+    await sendemail(
+      email,code
+    )
+  }
+  catch (err) {
+    const error = ErrorHandler.createError("error in sending email", 500, err as any);
+    return next(error);
+  }
   return res.status(200).json({
     success: true,
     message: "verification code sent to your email,please check your email",
@@ -120,7 +138,11 @@ const forgotPassword = asyncWrapper(async (req, res, next) => {
   const code: string = Math.floor(100000 + Math.random() * 900000).toString();
   user.verificationCode = code;
   await user.save();
-  try { const mail = await sendVerificationEmail(email, code); }
+  try { 
+   await sendemail(
+      email,code
+    );
+   }
   catch (err) {
     const error = ErrorHandler.createError("error in sending email", 500, err as any);
     return next(error);

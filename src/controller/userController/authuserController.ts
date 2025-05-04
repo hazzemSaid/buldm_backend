@@ -12,14 +12,15 @@ const JWT_SECRET = process.env.JWT_SECRET as string;
 
 const register = asyncWrapper(async (req, res, next) => {
   const { name, email, password, role } = req.body;
+
+  const olduser = await userModel.findOne({ email: email });
+  if (olduser) {
+    const err = ErrorHandler.createError("user already exists", 422, {});
+    return next(err);
+  }
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
     const err = ErrorHandler.createError("validation error", 422, errors.array());
-    return next(err);
-  }
-  const olduser = await userModel.findOne({ email: email });
-  if (olduser) {
-    const err = ErrorHandler.createError("user already exists", 422, errors.array());
     return next(err);
   }
   const code: string = Math.floor(100000 + Math.random() * 900000).toString();
@@ -119,7 +120,11 @@ const forgotPassword = asyncWrapper(async (req, res, next) => {
   const code: string = Math.floor(100000 + Math.random() * 900000).toString();
   user.verificationCode = code;
   await user.save();
-  const mail = await sendVerificationEmail(email, code);
+  try { const mail = await sendVerificationEmail(email, code); }
+  catch (err) {
+    const error = ErrorHandler.createError("error in sending email", 500, err as any);
+    return next(error);
+  }
   return res.status(200).json({
     success: true,
     message: "verification code sent to your email, please check your email",

@@ -3,7 +3,18 @@ import { body } from "express-validator";
 export const registerValidation = [
 	body("name").notEmpty().withMessage("name is required"),
 	body("email").isEmail().withMessage("email is required"),
-	body("password").notEmpty().withMessage("password is required"),
+	body("password")
+		.notEmpty().withMessage("password is required")
+		.isStrongPassword({
+			minLength: 8,
+			minLowercase: 1,
+			minUppercase: 1,
+			minNumbers: 1,
+			minSymbols: 1,
+			returnScore: false
+		})
+		.withMessage("password must be strong")
+
 ];
 
 export const loginValidation = [
@@ -27,8 +38,17 @@ export const forgotPasswordValidation = [
 export const resetPasswordValidation = [
 	body("email").isEmail().withMessage("email is required"),
 	body("code").notEmpty().withMessage("code is required"),
-	body("password").notEmpty().withMessage("password is required"),
-];
+	body("password")
+		.notEmpty().withMessage("password is required")
+		.isStrongPassword({
+			minLength: 8,
+			minLowercase: 1,
+			minUppercase: 1,
+			minNumbers: 1,
+			minSymbols: 1,
+			returnScore: true
+		})
+		.withMessage("password must be strong")];
 
 export const postValidation = [
 	body("title").notEmpty().withMessage("title is required"),

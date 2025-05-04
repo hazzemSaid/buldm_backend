@@ -12,9 +12,10 @@ import userRoute from "./routes/userRoute/userRoute";
 import { ICustomError } from "./utils/error";
 dotenv.config();
 
+
+
 const app = express();
 app.use(cors());
-
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
@@ -23,8 +24,6 @@ app.use(express.static(path.join(__dirname, "static")));
 app.use(express.static(path.join(__dirname, "uploads")));
 
 const url = process.env.MONGODB_URL as string;
-console.log(url);
-
 
 mongoose.connect(url)
 	.then(() => {

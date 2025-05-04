@@ -3,6 +3,8 @@ import multer from "multer";
 import path from "path";
 import postController from "../../controller/postController/postController";
 import { postValidation } from "../../utils/validation";
+import limiter from "../../utils/ratelimit";
+
 // إعداد التخزين للصور باستخدام multer
 const storage = multer.diskStorage({
 	destination: "uploads/",
@@ -20,6 +22,7 @@ postRouter
 		"/",
 		upload.array("images", 12),
 		postValidation,
+		limiter(3),
 		postController.createPost
 	)
 	.get("/:id", postController.getPostById,)

@@ -1,16 +1,15 @@
 import { Router } from "express";
-import { body } from "express-validator";
 import controller from "../../../controller/userController/authuserController";
 import verifyToken from "../../../middleware/verifyToken";
+import limit from "../../../utils/ratelimit";
 import {
-	registerValidation,
-	loginValidation,
-	verifyEmailValidation,
-	resendVerificationCode,
 	forgotPasswordValidation,
+	loginValidation,
+	registerValidation,
+	resendVerificationCode,
 	resetPasswordValidation,
+	verifyEmailValidation,
 } from "../../../utils/validation";
-
 const AuthUserRoute = Router();
 
 AuthUserRoute
@@ -19,7 +18,7 @@ AuthUserRoute
 	.post("/refreshtoken", verifyToken, controller.refreshToken)
 	.post("/verifyemail", verifyEmailValidation, controller.verifyEmail)
 	.post("/resendverificationcode", resendVerificationCode, controller.resendVerificationCode)
-	.post("/forgotpassword", forgotPasswordValidation, controller.forgotPassword)
+	.post("/forgotpassword", limit(5), forgotPasswordValidation, controller.forgotPassword)
 	.post("/resetpassword", resetPasswordValidation, controller.resetpassword);
 
 export default AuthUserRoute;

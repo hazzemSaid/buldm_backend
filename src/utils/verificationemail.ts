@@ -1,6 +1,6 @@
-import nodemailer, { Transporter, SendMailOptions } from 'nodemailer';
-import { MailtrapTransport } from 'mailtrap';
 import dotenv from 'dotenv';
+import { MailtrapTransport } from 'mailtrap';
+import nodemailer, { SendMailOptions, Transporter } from 'nodemailer';
 
 dotenv.config();
 
@@ -19,7 +19,7 @@ const transport: Transporter = nodemailer.createTransport(
 
 // Sender information
 const sender = {
-  address: "buldm@gmail.com",
+  address: "hello@demomailtrap.co",
   name: "buldm",
 };
 
@@ -35,7 +35,7 @@ async function sendVerificationEmail(toEmail: string, code: string): Promise<voi
   try {
     const info = await transport.sendMail(mailOptions);
   } catch (error) {
-    console.error("Error sending email:", error);
+    console.log(error);
   }
 }
 

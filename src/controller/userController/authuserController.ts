@@ -12,7 +12,7 @@ devenv.config();
 const JWT_SECRET = process.env.JWT_SECRET as string;
 
 const register = asyncWrapper(async (req, res, next) => {
-  const { name, email, password, role } = req.body;
+  const { name, email, password } = req.body;
 
   const olduser = await userModel.findOne({ email: email });
   if (olduser) {
@@ -27,9 +27,9 @@ const register = asyncWrapper(async (req, res, next) => {
   const code: string = Math.floor(100000 + Math.random() * 900000).toString();
 
   // const mail = await sendVerificationEmail(email, code);
-  try{
+  try {
     await sendemail(
-      email,code
+      email, code
     );
   }
   catch (err) {
@@ -47,9 +47,6 @@ const register = asyncWrapper(async (req, res, next) => {
     verificationCode: code,
 
   });
-  if (role) {
-    newuser.role = role;
-  }
   const token = JWT.sign(
     { email: newuser.email, _id: newuser._id as mongoose.Types.ObjectId, role: newuser.role },
     JWT_SECRET,
@@ -111,7 +108,7 @@ const resendVerificationCode = asyncWrapper(async (req, res, next) => {
   await user.save();
   try {
     await sendemail(
-      email,code
+      email, code
     )
   }
   catch (err) {
@@ -138,11 +135,11 @@ const forgotPassword = asyncWrapper(async (req, res, next) => {
   const code: string = Math.floor(100000 + Math.random() * 900000).toString();
   user.verificationCode = code;
   await user.save();
-  try { 
-   await sendemail(
-      email,code
+  try {
+    await sendemail(
+      email, code
     );
-   }
+  }
   catch (err) {
     const error = ErrorHandler.createError("error in sending email", 500, err as any);
     return next(error);

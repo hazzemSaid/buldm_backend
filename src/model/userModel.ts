@@ -1,4 +1,5 @@
 import mongoose from "mongoose";
+import { resetPasswordValidation } from '../utils/validation';
 const userSchema = new mongoose.Schema({
 	name: {
 		type: String,
@@ -18,6 +19,7 @@ const userSchema = new mongoose.Schema({
 		type: String,
 		required: true,
 	},
+	
 	avatar: {
 		type: String,
 		default: "/image/2024.png",
@@ -28,9 +30,8 @@ const userSchema = new mongoose.Schema({
 	verificationCode: {
 		type: String,
 	},
-	verified: {
-		type: Boolean,
-		default: false,
+	forgotPasswordToken:{
+		type : String,
 	},
 	createdAt: {
 		type: Date,

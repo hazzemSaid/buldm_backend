@@ -37,9 +37,7 @@ export const forgotPasswordValidation = [
 
 export const resetPasswordValidation = [
 	body("email").isEmail().withMessage("email is required"),
-	body("code").notEmpty().withMessage("code is required"),
 	body("password")
-		.notEmpty().withMessage("password is required")
 		.isStrongPassword({
 			minLength: 8,
 			minLowercase: 1,
@@ -48,7 +46,10 @@ export const resetPasswordValidation = [
 			minSymbols: 1,
 			returnScore: true
 		})
-		.withMessage("password must be strong")];
+		.withMessage("password must be strong")
+		.notEmpty().withMessage("password is required")
+
+];
 
 export const postValidation = [
 	body("title").notEmpty().withMessage("title is required"),

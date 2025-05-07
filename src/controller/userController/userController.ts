@@ -3,9 +3,10 @@ import { validationResult } from "express-validator";
 import asyncWrapper from "../../middleware/asyncwrapper";
 import userModel from "../../model/userModel";
 import ErrorHandler from "../../utils/error"; // استيراد الخطأ المخصص
+import { usersafe } from "../userController/authuserController";
 // نوع خاص للخطأ مع كود حالة
-import Fuse from "fuse.js";
 import fs from "fs";
+import Fuse from "fuse.js";
 import mongoose from "mongoose";
 import cloudinary from "../../utils/cloudinaryService";
 
@@ -21,16 +22,22 @@ export const getUser = asyncWrapper(
 			return next(err);
 		}
 		const id = req.params.id;
+
 		const user = await userModel.findById(id);
 
 		if (!user) {
 			const err = ErrorHandler.createError("User not found", 404);
 			return next(err);
 		}
-
+		const usersafe: usersafe = {
+			name: user.name,
+			email: user.email,
+			avatar: user.avatar,
+			token: user.token as string,
+		}
 		return res.status(200).json({
 			success: true,
-			user: user,
+			user: usersafe,
 		});
 	}
 );
@@ -58,10 +65,13 @@ export const finduser_by_username = asyncWrapper(
 		});
 	}
 );
+interface RequestWithIdParams extends Request {
+	params: {
+		id: string;
+	};
+}
 const updateuser = asyncWrapper(
-	async (req: any, res: Response, next: NextFunction) => {
-		//name
-		//  avatar image
+	async (req: RequestWithIdParams, res: Response, next: NextFunction) => {
 		const userid = new mongoose.Types.ObjectId(req.params.id);
 		const user = await userModel.findById(userid);
 		if (!user) {
@@ -76,10 +86,16 @@ const updateuser = asyncWrapper(
 			user.avatar = result.secure_url;
 			await fs.unlinkSync(req.file.path);
 		}
+		const usersafe : usersafe ={
+			name: user.name,
+			email: user.email,
+			avatar: user.avatar,
+			token: user.token as string,
+		}
 		await user.save();
 		return res.status(200).json({
 			success: true,
-			user: user,
+			user: usersafe,
 		});
 	}
 );

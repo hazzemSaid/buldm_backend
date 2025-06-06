@@ -20,7 +20,7 @@ const storage = multer.diskStorage({
 const upload = multer({ storage });
 // Get user by ID
 router.get(
-  '/:id',
+  '/ID/:id',
   verifyToken,
   param('id').isString().withMessage('ID is required').trim(),
 
@@ -31,7 +31,7 @@ router.get(
 router.get('/find/:username', verifyToken, usercontroller.finduser_by_username);
 // Update user
 router.put(
-  '/:id',
+  '/ID/:id',
   verifyToken,
   upload.single('avatar'),
   usercontroller.updateuser

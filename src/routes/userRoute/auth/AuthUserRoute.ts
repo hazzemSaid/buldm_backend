@@ -4,6 +4,7 @@ import verifyToken from "../../../middleware/verifyToken";
 import limit from "../../../utils/ratelimit";
 import {
 	forgotPasswordValidation,
+	googleauthtoken,
 	loginValidation,
 	registerValidation,
 	resendVerificationCode,
@@ -30,6 +31,8 @@ AuthUserRoute
 		controller.forgotPassword
 	)
 	.post("/verifycode", verifyEmailValidation, controller.verifyCode)
-	.post("/resetpassword", resetPasswordValidation, controller.resetPassword);
+	.post("/resetpassword", resetPasswordValidation, controller.resetPassword).post("/google_auth", 
+		googleauthtoken,
+		controller.googleAuth);
 
 export default AuthUserRoute;

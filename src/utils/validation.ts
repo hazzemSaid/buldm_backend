@@ -34,6 +34,9 @@ export const resendVerificationCode = [
 export const forgotPasswordValidation = [
 	body("email").isEmail().withMessage("email is required"),
 ];
+export const googleauthtoken = [
+	body("token").notEmpty().withMessage("token is required"),
+]
 
 export const resetPasswordValidation = [
 	body("email").isEmail().withMessage("email is required"),

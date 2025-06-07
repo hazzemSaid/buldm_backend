@@ -1,5 +1,6 @@
 import devenv from "dotenv";
 import { validationResult } from "express-validator";
+import { OAuth2Client } from "google-auth-library";
 import JWT from "jsonwebtoken";
 import mongoose from "mongoose";
 import asyncWrapper from "../../middleware/asyncwrapper";
@@ -8,9 +9,15 @@ import { compare, hash } from "../../utils/bcryptcodegen";
 import ErrorHandler from "../../utils/error";
 import sendemail from "../../utils/mailersend";
 devenv.config();
-if (!process.env.JWT_SECRET || !process.env.SALT_ROUNDS) {
+if (
+  !process.env.JWT_SECRET ||
+  !process.env.SALT_ROUNDS ||
+  !process.env.GOOGLE_CLIENT_ID
+) {
   throw new Error("Missing required environment variables");
 }
+const webClientId = process.env.GOOGLE_CLIENT_ID;
+const webClient = new OAuth2Client(webClientId);
 
 const JWT_SECRET = process.env.JWT_SECRET as string;
 export interface usersafe {
@@ -18,7 +25,7 @@ export interface usersafe {
   email: string;
   avatar: string;
   token: string;
-};
+}
 const register = asyncWrapper(async (req, res, next) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
@@ -90,7 +97,10 @@ const verifyEmail = asyncWrapper(async (req, res, next) => {
     return next(err);
   }
 
-  const matchcode: boolean = await compare(code, user.verificationCode as string);
+  const matchcode: boolean = await compare(
+    code,
+    user.verificationCode as string
+  );
   if (!matchcode) {
     const err = ErrorHandler.createError(
       "verification code is invalid",
@@ -211,7 +221,10 @@ const verifyCode = asyncWrapper(async (req, res, next) => {
     const err = ErrorHandler.createError("user not found", 404, error.array());
     return next(err);
   }
-  const matchcode: boolean = await compare(code, user.verificationCode as string);
+  const matchcode: boolean = await compare(
+    code,
+    user.verificationCode as string
+  );
   if (!matchcode) {
     const err = ErrorHandler.createError(
       "verification code is invalid",
@@ -249,15 +262,13 @@ const resetPassword = asyncWrapper(async (req, res, next) => {
     return next(err);
   }
   try {
-    const token = JWT.verify(user.forgotPasswordToken as string, process.env.JWT_SECRET as string);
-    console.log(token);
-
-  } catch (error) {
-    const err = ErrorHandler.createError(
-      "token expired",
-      401,
-      error as any
+    const token = JWT.verify(
+      user.forgotPasswordToken as string,
+      process.env.JWT_SECRET as string
     );
+    console.log(token);
+  } catch (error) {
+    const err = ErrorHandler.createError("token expired", 401, error as any);
     return next(err);
   }
   const hashedpassword = await hash(password);
@@ -269,7 +280,7 @@ const resetPassword = asyncWrapper(async (req, res, next) => {
     success: true,
     message: "password reset successfully",
   });
-})
+});
 const login = asyncWrapper(async (req, res, next) => {
   const error = validationResult(req);
   if (!error.isEmpty()) {
@@ -330,10 +341,7 @@ const refreshToken = asyncWrapper(async (req: any, res, next) => {
   }
 
   const { email } = req.user;
-  const user = await userModel.findOne(
-    { email: email },
-
-  );
+  const user = await userModel.findOne({ email: email });
   if (!user) {
     const err = ErrorHandler.createError("user not found", 422, error.array());
     return next(err);
@@ -354,13 +362,139 @@ const refreshToken = asyncWrapper(async (req: any, res, next) => {
     email: user.email,
     avatar: user.avatar,
     token: user.token,
-  }
+  };
   await user?.save();
   return res.status(200).json({
     success: true,
     user: usersafe,
   });
 });
+
+const googleAuth = asyncWrapper(async (req, res, next) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return next(
+      ErrorHandler.createError("validation error", 422, errors.array())
+    );
+  }
+
+  const { token } = req.body;
+  if (!token) {
+    return next(ErrorHandler.createError("token is required", 422));
+  }
+
+  let decodedPayload: any;
+  try {
+    const [header, payload, signature] = token.split(".");
+    decodedPayload = JSON.parse(Buffer.from(payload, "base64").toString());
+    console.log(
+      `Server timezone: ${Intl.DateTimeFormat().resolvedOptions().timeZone}`
+    );
+    console.log("Token payload debug:", {
+      iss: decodedPayload.iss,
+      aud: decodedPayload.aud,
+      azp: decodedPayload.azp,
+      exp: decodedPayload.exp,
+      iat: decodedPayload.iat,
+      email: decodedPayload.email,
+      email_verified: decodedPayload.email_verified,
+      name: decodedPayload.name,
+      given_name: decodedPayload.given_name,
+      family_name: decodedPayload.family_name,
+      picture: decodedPayload.picture,
+    });
+  } catch (error) {
+    return next(ErrorHandler.createError("invalid token", 401));
+  }
+
+  const {
+    sub: googleId,
+    email,
+    email_verified: emailVerified,
+    picture,
+    given_name: firstName,
+    family_name: lastName,
+    iat: issuedAt,
+    exp: expiresAt,
+  } = decodedPayload;
+
+  // Validate essential fields
+  if (!email || !emailVerified) {
+    return next(ErrorHandler.createError("email not verified or missing", 401));
+  }
+
+  // Check if token is expired
+  const currentTime = Math.floor(Date.now() / 1000) - 2 * 60 * 60; // Adding 2 hours in seconds
+  if (expiresAt && currentTime > expiresAt) {
+    return next(ErrorHandler.createError("token has expired", 401));
+  }
+  // now what
+
+  const olduser = await userModel.findOne({ email: email });
+  if (olduser) {
+    //make the token and return it
+    const token = JWT.sign(
+      {
+        email: olduser.email,
+        _id: olduser._id as mongoose.Types.ObjectId,
+        role: olduser.role,
+      },
+      JWT_SECRET,
+      { expiresIn: "1h" }
+    );
+    olduser.token = token;
+    await olduser.save();
+    const usersafe: usersafe = {
+      name: olduser.name,
+      email: olduser.email,
+      avatar: olduser.avatar,
+      token: olduser.token,
+    };
+    return res.status(200).json({
+      success: true,
+      message: "Google auth successful",
+      user: usersafe,
+    });
+  }
+  const newToken = JWT.sign(
+    {
+      email: email,
+      _id: new mongoose.Types.ObjectId(),
+      role: "user",
+    },
+    JWT_SECRET,
+    { expiresIn: "1h" }
+  );
+  const dummyPassword = Math.random().toString(36).slice(-8); // كلمة سر عشوائية
+  const decodepassword = await hash(dummyPassword);
+
+  const newuser = await userModel.create({
+    name: firstName,
+    email,
+    avatar: picture,
+    verified: true,
+    password: decodepassword,
+    verificationCode: "",
+    forgotPasswordToken: "",
+    role: "user",
+    token: newToken,
+  });
+
+  await newuser.save({});
+  const usersafe: usersafe = {
+    name: newuser.name,
+    email: newuser.email,
+    avatar: newuser.avatar,
+    token: newuser.token as string,
+  };
+  
+  return res.status(200).json({
+    success: true,
+    message: "Google auth successful",
+    user: usersafe,
+  });
+});
+
 export default {
   register,
   verifyEmail,
@@ -370,5 +504,5 @@ export default {
   resetPassword,
   login,
   refreshToken,
+  googleAuth,
 };
-

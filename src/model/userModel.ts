@@ -1,5 +1,4 @@
 import mongoose from "mongoose";
-import { resetPasswordValidation } from '../utils/validation';
 const userSchema = new mongoose.Schema({
 	name: {
 		type: String,

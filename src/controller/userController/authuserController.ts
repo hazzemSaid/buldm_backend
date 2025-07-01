@@ -20,12 +20,98 @@ const webClientId = process.env.GOOGLE_CLIENT_ID;
 const webClient = new OAuth2Client(webClientId);
 
 const JWT_SECRET = process.env.JWT_SECRET as string;
+/**
+ * @swagger
+ * components:
+ *   schemas:
+ *     User:
+ *       type: object
+ *       required:
+ *         - name
+ *         - email
+ *         - password
+ *       properties:
+ *         name:
+ *           type: string
+ *           description: User's full name
+ *         email:
+ *           type: string
+ *           description: User's email address
+ *         avatar:
+ *           type: string
+ *           description: URL to user's avatar image
+ *         token:
+ *           type: string
+ *           description: Authentication token
+ *   responses:
+ *     UserResponse:
+ *       description: User data with token
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               success:
+ *                 type: boolean
+ *               user:
+ *                 $ref: '#/components/schemas/User'
+ */
+
 export interface usersafe {
-  name: string;
-  email: string;
-  avatar: string;
-  token: string;
+  name: String;
+  email: String;
+  avatar: String;
+  token: String;
+  refreshToken: String;
 }
+
+/**
+ * @swagger
+ * /api/v1/user/auth/register:
+ *   post:
+ *     summary: Register a new user
+ *     tags: [Authentication]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - name
+ *               - email
+ *               - password
+ *             properties:
+ *               name:
+ *                 type: string
+ *               email:
+ *                 type: string
+ *                 format: email
+ *               password:
+ *                 type: string
+ *                 format: password
+ *     responses:
+ *       200:
+ *         description: Verification code sent to email
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 message:
+ *                   type: string
+ *                 user:
+ *                   type: object
+ *                   properties:
+ *                     name:
+ *                       type: string
+ *                     email:
+ *                       type: string
+ *       422:
+ *         description: Validation error or user already exists
+ */
 const register = asyncWrapper(async (req, res, next) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
@@ -75,7 +161,7 @@ const register = asyncWrapper(async (req, res, next) => {
 
   return res.status(200).json({
     success: true,
-    massage: "verification code sent to your email",
+    message: "verification code sent to your email",
     user,
   });
 });
@@ -96,7 +182,10 @@ const verifyEmail = asyncWrapper(async (req, res, next) => {
 
     return next(err);
   }
-
+  if (user.verified) {
+    const err = ErrorHandler.createError("user already verified", 422, []);
+    return next(err);
+  }
   const matchcode: boolean = await compare(
     code,
     user.verificationCode as string
@@ -110,6 +199,7 @@ const verifyEmail = asyncWrapper(async (req, res, next) => {
     return next(err);
   }
   user.verificationCode = null;
+  user.verified = true;
   const token = JWT.sign(
     {
       email: user.email,
@@ -119,13 +209,23 @@ const verifyEmail = asyncWrapper(async (req, res, next) => {
     JWT_SECRET,
     { expiresIn: "1h" }
   );
+  const refreshToken= JWT.sign({
+      email: user.email,
+      _id: user._id as mongoose.Types.ObjectId,
+      role: user.role,
+    },
+    JWT_SECRET,
+    { expiresIn: "7d" }
+  );
   user.token = token;
+  user.refreshToken = refreshToken;
   await user.save();
   const usersafe: usersafe = {
     name: user.name,
     email: user.email,
     avatar: user.avatar,
     token: user.token as string,
+    refreshToken:user.refreshToken as string,
   };
   return res.status(200).json({
     success: true,
@@ -275,12 +375,67 @@ const resetPassword = asyncWrapper(async (req, res, next) => {
   user.password = hashedpassword;
   user.verificationCode = null;
   user.forgotPasswordToken = null;
+  user.token = JWT.sign(
+    {
+      email: user.email,
+      _id: user._id as mongoose.Types.ObjectId,
+      role: user.role,
+    },
+    JWT_SECRET,
+    { expiresIn: "1h" }
+  );
+  user.refreshToken = JWT.sign(
+    {
+      email: user.email,
+      _id: user._id as mongoose.Types.ObjectId,
+      role: user.role,
+    },
+    JWT_SECRET,
+    { expiresIn: "7d" }
+  );
   await user.save();
   return res.status(200).json({
     success: true,
     message: "password reset successfully",
   });
 });
+/**
+ * @swagger
+ * /api/v1/user/auth/login:
+ *   post:
+ *     summary: Login a user
+ *     tags: [Authentication]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - email
+ *               - password
+ *             properties:
+ *               email:
+ *                 type: string
+ *                 format: email
+ *               password:
+ *                 type: string
+ *                 format: password
+ *     responses:
+ *       200:
+ *         description: Login successful
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 user:
+ *                   $ref: '#/components/schemas/User'
+ *       422:
+ *         description: User not found or incorrect password
+ */
 const login = asyncWrapper(async (req, res, next) => {
   const error = validationResult(req);
   if (!error.isEmpty()) {
@@ -296,6 +451,10 @@ const login = asyncWrapper(async (req, res, next) => {
   const user = await userModel.findOne({ email: email });
   if (!user) {
     const err = ErrorHandler.createError("user not found", 422, error.array());
+    return next(err);
+  }
+  if (user.verified == false) {
+    const err = ErrorHandler.createError("user not verified", 422, []);
     return next(err);
   }
   const matchpassword = await compare(password, user.password as string);
@@ -316,19 +475,55 @@ const login = asyncWrapper(async (req, res, next) => {
     JWT_SECRET,
     { expiresIn: "1h" }
   );
+  const refreshToken= JWT.sign(
+    {
+      email: user.email,
+      _id: user._id as mongoose.Types.ObjectId,
+      role: user.role,
+    },
+    JWT_SECRET,
+    { expiresIn: "7d" }
+  );
   user.token = token;
+  user.refreshToken = refreshToken;
   await user.save();
   const usersafe: usersafe = {
     name: user.name,
     email: user.email,
     avatar: user.avatar,
     token: user.token,
+    refreshToken:user.refreshToken,
   };
   return res.status(200).json({
     success: true,
     user: usersafe,
   });
 });
+/**
+ * @swagger
+ * /api/v1/user/auth/refreshToken:
+ *   post:
+ *     summary: Refresh the authentication token for a user
+ *     tags: [Authentication]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Token refreshed successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 user:
+ *                   $ref: '#/components/schemas/User'
+ *       401:
+ *         description: Unauthorized or invalid token
+ *       422:
+ *         description: Validation error
+ */
 const refreshToken = asyncWrapper(async (req: any, res, next) => {
   const error = validationResult(req);
   if (!error.isEmpty()) {
@@ -356,12 +551,23 @@ const refreshToken = asyncWrapper(async (req: any, res, next) => {
     JWT_SECRET,
     { expiresIn: "1h" }
   );
+  const newrefreshToken = JWT.sign(
+    {
+      email: user?.email,
+      _id: user?._id as mongoose.Types.ObjectId,
+      role: user?.role,
+    },
+    JWT_SECRET,
+    { expiresIn: "7d" }
+  );
   user.token = newToken;
+  user.refreshToken = newrefreshToken;
   const usersafe: usersafe = {
     name: user.name,
     email: user.email,
     avatar: user.avatar,
     token: user.token,
+    refreshToken:user.refreshToken,
   };
   await user?.save();
   return res.status(200).json({
@@ -370,6 +576,43 @@ const refreshToken = asyncWrapper(async (req: any, res, next) => {
   });
 });
 
+/**
+ * @swagger
+ * /api/v1/user/auth/google_auth:
+ *   post:
+ *     summary: Authenticate user with Google
+ *     tags: [Authentication]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - token
+ *             properties:
+ *               token:
+ *                 type: string
+ *                 description: Google ID token
+ *     responses:
+ *       200:
+ *         description: Google authentication successful
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 message:
+ *                   type: string
+ *                 user:
+ *                   $ref: '#/components/schemas/User'
+ *       401:
+ *         description: Invalid token or token expired
+ *       422:
+ *         description: Validation error
+ */
 const googleAuth = asyncWrapper(async (req, res, next) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
@@ -442,6 +685,16 @@ const googleAuth = asyncWrapper(async (req, res, next) => {
       JWT_SECRET,
       { expiresIn: "1h" }
     );
+    const refreshToken = JWT.sign(
+      {
+        email: olduser.email,
+        _id: olduser._id as mongoose.Types.ObjectId,
+        role: olduser.role,
+      },
+      JWT_SECRET,
+      { expiresIn: "7d" }
+    );
+    olduser.refreshToken = refreshToken;
     olduser.token = token;
     await olduser.save();
     const usersafe: usersafe = {
@@ -449,6 +702,7 @@ const googleAuth = asyncWrapper(async (req, res, next) => {
       email: olduser.email,
       avatar: olduser.avatar,
       token: olduser.token,
+      refreshToken:olduser.refreshToken,
     };
     return res.status(200).json({
       success: true,
@@ -465,6 +719,15 @@ const googleAuth = asyncWrapper(async (req, res, next) => {
     JWT_SECRET,
     { expiresIn: "1h" }
   );
+  const newrefreshToken = JWT.sign(
+    {
+      email: email,
+      _id: new mongoose.Types.ObjectId(),
+      role: "user",
+    },
+    JWT_SECRET,
+    { expiresIn: "7d" }
+  );
   const dummyPassword = Math.random().toString(36).slice(-8); // كلمة سر عشوائية
   const decodepassword = await hash(dummyPassword);
 
@@ -478,6 +741,7 @@ const googleAuth = asyncWrapper(async (req, res, next) => {
     forgotPasswordToken: "",
     role: "user",
     token: newToken,
+      refreshToken:newrefreshToken,
   });
 
   await newuser.save({});
@@ -486,8 +750,9 @@ const googleAuth = asyncWrapper(async (req, res, next) => {
     email: newuser.email,
     avatar: newuser.avatar,
     token: newuser.token as string,
+    refreshToken:newuser.refreshToken as string,
   };
-  
+
   return res.status(200).json({
     success: true,
     message: "Google auth successful",

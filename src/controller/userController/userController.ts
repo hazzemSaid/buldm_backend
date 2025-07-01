@@ -34,6 +34,7 @@ export const getUser = asyncWrapper(
 			email: user.email,
 			avatar: user.avatar,
 			token: user.token as string,
+			refreshToken: user.refreshToken as string,
 		}
 		return res.status(200).json({
 			success: true,
@@ -91,6 +92,7 @@ const updateuser = asyncWrapper(
 			email: user.email,
 			avatar: user.avatar,
 			token: user.token as string,
+			refreshToken: user.refreshToken as string,
 		}
 		await user.save();
 		return res.status(200).json({

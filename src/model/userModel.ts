@@ -26,6 +26,9 @@ const userSchema = new mongoose.Schema({
 	token: {
 		type: String,
 	},
+	refreshToken:{
+		type:String
+	},
 	verificationCode: {
 		type: String,
 	},
@@ -40,7 +43,10 @@ const userSchema = new mongoose.Schema({
 		type: Date,
 		default: Date.now,
 	},
-
+	verified: {
+		type: Boolean,
+		default: false,
+	},
 }, {
 	versionKey: false,
 });

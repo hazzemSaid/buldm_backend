@@ -16,9 +16,9 @@ const AuthUserRoute = Router();
 AuthUserRoute
 	.post("/register", registerValidation, controller.register)
 	.post("/login", loginValidation, controller.login)
-	.post("/refreshtoken", verifyToken, controller.refreshToken)
+	.post("/refreshToken", verifyToken, controller.refreshToken)
 	.post("/verifyemail", verifyEmailValidation, controller.verifyEmail)
-	.post(
+	.post(               
 		"/resendverificationcode",
 		resendVerificationCode,
 		limit(5),
@@ -33,6 +33,6 @@ AuthUserRoute
 	.post("/verifycode", verifyEmailValidation, controller.verifyCode)
 	.post("/resetpassword", resetPasswordValidation, controller.resetPassword).post("/google_auth", 
 		googleauthtoken,
-		controller.googleAuth);
+		controller.googleAuth)
 
 export default AuthUserRoute;

@@ -1,12 +1,10 @@
 import { NextFunction, Request, Response } from "express";
 import { validationResult } from "express-validator";
 import fs from "fs";
-import * as nsfwjs from "nsfwjs";
 import asyncWrapper from "../../middleware/asyncwrapper";
 import postModel from "../../model/postModel";
 import cloudinary from "../../utils/cloudinaryService";
 import ErrorHandler from "../../utils/error";
-import processAllImages from "../../utils/predictedunwantedimage";
 // Define interface for location and predicted items
 interface Location {
 	coordinates?: [string, string];
@@ -74,21 +72,7 @@ const createPost = asyncWrapper(
 				: null;
 		const files = req.files as Express.Multer.File[];
 		let images_RUL: string[] = [];
-		const model = await nsfwjs.load();
-		const unwantedImages = await processAllImages(files, model);
-		console.log(unwantedImages);
 
-		if (unwantedImages) {
-			const error = ErrorHandler.createError(
-				"Unlegal content detected in images",
-				422,
-				"unwanted images"
-			);
-			for (let i = 0; i < files.length; i++) {
-				fs.unlinkSync(req.files[i].path);
-			}
-			return next(error);
-		}
 		for (let i = 0; i < files.length; i++) {
 			const upload_image: any = await cloudinary.uploader.upload(
 				files[i].path,
@@ -97,10 +81,12 @@ const createPost = asyncWrapper(
 				}
 			);
 			images_RUL.push(upload_image.secure_url);
-			fs.unlinkSync(req.files[i].path);
+			fs.unlinkSync(files[i].path);
+			
 		}
 		// Delete the file after uploading to Cloudinary
-		const postData= {
+		
+		const postData = {
 			title,
 			description,
 			images: images_RUL,
@@ -108,7 +94,7 @@ const createPost = asyncWrapper(
 				type: "Point",
 				coordinates: coordinates, // Assign coordinates if valid, else it will be null
 				placeName: placeName,
-				
+
 			},
 			when,
 			status,
@@ -159,8 +145,11 @@ const getPostById = asyncWrapper(
 );
 
 const getAllPosts = asyncWrapper(
-	async (req: Request, res: Response, next: NextFunction) => {
-		const posts = await postModel.find();
+	async (req: any, res: Response, next: NextFunction) => {
+		const page = parseInt(req.query.page) || 1;
+		const limit = parseInt(req.query.limit) || 10;
+		const skip = (page - 1) * limit;
+		const posts = await postModel.find().sort({ createdAt: -1 }).skip(skip).limit(limit);
 		if (!posts) {
 			const error = ErrorHandler.createError("No posts found", 404, "no data");
 			return next(error);

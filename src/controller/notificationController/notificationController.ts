@@ -14,10 +14,10 @@ const sendnotification = asyncWrapper(
 			const err = ErrorHandler.createError("you are not authorized", 403);
 			return next(err);
 		}
-		const { title, massage, token }: { title: string; massage: string; token?: string } = req.body;
+		const { title, message, token }: { title: string; message: string; token?: string } = req.body;
 		await sendNotificationService.sendNotificationService(
 			title,
-			massage,
+			message,
 		);
 		res.status(200).json({
 			status: "success",

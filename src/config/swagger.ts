@@ -16,8 +16,22 @@ const options = {
 				url: "http://localhost:3000",
 			},
 		],
+		components: {
+			securitySchemes: {
+				bearerAuth: {
+					type: "http",
+					scheme: "bearer",
+					bearerFormat: "JWT",
+				},
+			},
+		},
+		security: [
+			{
+				bearerAuth: [],
+			},
+		],
 	},
-	apis: ["./src/routes/**/*.ts"], // ← هنا بتحط مسار ملفات الراوتر اللي فيها التعليقات
+	apis: ["./src/routes/**/*.ts", "./src/controller/**/*.ts"], // Include both routes and controllers
 };
 
 const swaggerSpec = swaggerJSDoc(options);

@@ -31,6 +31,8 @@ export const getUser = asyncWrapper(
 		}
 		const usersafe: usersafe = {
 			name: user.name,
+    user_id: user._id.toString(),
+
 			email: user.email,
 			avatar: user.avatar,
 			token: user.token as string,
@@ -90,6 +92,8 @@ const updateuser = asyncWrapper(
 		const usersafe : usersafe ={
 			name: user.name,
 			email: user.email,
+    user_id: user._id.toString(),
+
 			avatar: user.avatar,
 			token: user.token as string,
 			refreshToken: user.refreshToken as string,

@@ -24,6 +24,8 @@ interface RequestWithFiles extends Request {
 
 const createPost = asyncWrapper(
 	async (req: any, res: Response, next: NextFunction) => {
+		console.log(req.body);
+
 		const errors = validationResult(req);
 
 		if (!errors.isEmpty()) {
@@ -34,7 +36,7 @@ const createPost = asyncWrapper(
 			);
 			return next(err);
 		}
-
+		console.log(req.body);
 		const {
 			title,
 			description,
@@ -46,7 +48,6 @@ const createPost = asyncWrapper(
 			contactInfo = "",
 			when,
 		} = req.body;
-
 		// Handling coordinates
 		let coordinates: number[] | null = null;
 		if (
@@ -82,11 +83,11 @@ const createPost = asyncWrapper(
 			);
 			images_RUL.push(upload_image.secure_url);
 			fs.unlinkSync(files[i].path);
-			
+
 		}
 		// Delete the file after uploading to Cloudinary
-		
-		const postData = {
+
+		const postData  = {
 			title,
 			description,
 			images: images_RUL,
@@ -256,11 +257,37 @@ const updatepost = asyncWrapper(
 		});
 	}
 );
+const getallpostByuserid = asyncWrapper(
+	async (req: any, res: Response, next: NextFunction) => {
+	const errors = validationResult(req);
 
+		if (!errors.isEmpty()) {
+			const err = ErrorHandler.createError(
+				"Validation error",
+				422,
+				errors.array()
+			);
+			return next(err);
+		}
+		const userid = req.params.id;
+		console.log(userid);
+		const posts = await postModel.find({user_id:userid});
+		if (!posts) {
+			const error = ErrorHandler.createError("No posts found", 404, "no data");
+			return next(error);
+		}
+		return res.status(200).json({
+			success: true,
+			message: "Posts retrieved successfully",
+			data: posts,
+		});
+	}
+);
 export default {
 	createPost,
 	deletePostById,
 	getAllPosts,
 	getPostById,
 	updatepost,
+	getallpostByuserid
 };

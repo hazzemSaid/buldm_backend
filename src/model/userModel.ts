@@ -21,7 +21,7 @@ const userSchema = new mongoose.Schema({
 	
 	avatar: {
 		type: String,
-		default: "/image/2024.png",
+		default: "https://res.cloudinary.com/dr5cpch1n/image/upload/v1752943485/Unknown_person_o3xaku.jpg",
 	},
 	token: {
 		type: String,

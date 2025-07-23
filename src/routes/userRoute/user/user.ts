@@ -29,7 +29,7 @@ router.get(
 
 // Find user by username
 router.get('/find/:username', verifyToken, usercontroller.finduser_by_username);
-// Update user
+// Update user 
 router.put(
   '/ID/:id',
   verifyToken,

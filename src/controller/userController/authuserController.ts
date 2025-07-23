@@ -63,6 +63,7 @@ export interface usersafe {
   avatar: String;
   token: String;
   refreshToken: String;
+  user_id:String;
 }
 
 /**
@@ -226,6 +227,7 @@ const verifyEmail = asyncWrapper(async (req, res, next) => {
     avatar: user.avatar,
     token: user.token as string,
     refreshToken:user.refreshToken as string,
+    user_id: user._id.toString()
   };
   return res.status(200).json({
     success: true,
@@ -493,6 +495,9 @@ const login = asyncWrapper(async (req, res, next) => {
     avatar: user.avatar,
     token: user.token,
     refreshToken:user.refreshToken,
+      user_id: user._id.toString()
+
+
   };
   return res.status(200).json({
     success: true,
@@ -568,6 +573,8 @@ const refreshToken = asyncWrapper(async (req: any, res, next) => {
     avatar: user.avatar,
     token: user.token,
     refreshToken:user.refreshToken,
+    user_id: user._id.toString()
+
   };
   await user?.save();
   return res.status(200).json({
@@ -699,6 +706,8 @@ const googleAuth = asyncWrapper(async (req, res, next) => {
     await olduser.save();
     const usersafe: usersafe = {
       name: olduser.name,
+    user_id: olduser._id.toString(),
+
       email: olduser.email,
       avatar: olduser.avatar,
       token: olduser.token,
@@ -747,6 +756,8 @@ const googleAuth = asyncWrapper(async (req, res, next) => {
   await newuser.save({});
   const usersafe: usersafe = {
     name: newuser.name,
+    user_id: newuser._id.toString(),
+
     email: newuser.email,
     avatar: newuser.avatar,
     token: newuser.token as string,

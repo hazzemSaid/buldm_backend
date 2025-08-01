@@ -106,10 +106,11 @@ io.on("connection", (socket) => {
 
 		// ✅ احفظ الرسالة دائمًا
 		try {
-			await MessageModel.create({
+			MessageEvent = await MessageModel.create({
 				from: from,
 				to: touserId,
 				message: Message,
+				// timestamp: new Date().toISOString(), // ✅ UTC ISO timestamp
 			});
 		} catch (err) {
 			console.error("Error saving message:", err);
@@ -117,7 +118,9 @@ io.on("connection", (socket) => {
 
 		// ✅ ابعت الرسالة لحظيًا لو المستخدم متصل
 		if (toSocketId) {
-			io.to(toSocketId).emit("ReceiveMessage", { from, Message });
+			console.log("go go go ")
+			io.to(toSocketId).emit("ReceiveMessage", { from, MessageEvent });
+			socket.emit("ReceiveMessage", { from, MessageEvent });
 		}
 	});
 });

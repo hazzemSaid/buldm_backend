@@ -4,6 +4,7 @@ import asyncWrapper from "../../middleware/asyncwrapper";
 import userModel from "../../model/userModel";
 import ErrorHandler from "../../utils/error"; // استيراد الخطأ المخصص
 import { usersafe } from "../userController/authuserController";
+
 // نوع خاص للخطأ مع كود حالة
 import fs from "fs";
 import Fuse from "fuse.js";
@@ -31,7 +32,7 @@ export const getUser = asyncWrapper(
 		}
 		const usersafe: usersafe = {
 			name: user.name,
-    user_id: user._id.toString(),
+			user_id: user._id.toString(),
 
 			email: user.email,
 			avatar: user.avatar,
@@ -57,14 +58,23 @@ export const finduser_by_username = asyncWrapper(
 		const fuse = new Fuse(user, options);
 		const result = fuse.search(username);
 		if (result.length === 0) {
-			return res.status(404).json({
+			return res.status(200).json({
 				success: false,
-				message: "No users found",
+				users: []
 			});
 		}
+		const userIds = result.map(r => r.item._id);
+		const users = await userModel.find({ _id: { $in: userIds } });
+		const safeusers: any = users.map(user => ({
+			name: user.name,
+			user_id: user._id.toString(),
+			email: user.email,
+			avatar: user.avatar,
+		}));
+
 		return res.status(200).json({
 			success: true,
-			users: result,
+			users: safeusers,
 		});
 	}
 );
@@ -81,7 +91,6 @@ const updateuser = asyncWrapper(
 			const err = ErrorHandler.createError("User not found", 404);
 			return next(err);
 		}
-		user.name = req.body.name ?? user.name;
 		if (req.file) {
 			const result = await cloudinary.uploader.upload(req.file.path, {
 				folder: "profile_images",
@@ -89,19 +98,18 @@ const updateuser = asyncWrapper(
 			user.avatar = result.secure_url;
 			await fs.unlinkSync(req.file.path);
 		}
-		const usersafe : usersafe ={
-			name: user.name,
-			email: user.email,
-    user_id: user._id.toString(),
 
-			avatar: user.avatar,
-			token: user.token as string,
-			refreshToken: user.refreshToken as string,
-		}
 		await user.save();
 		return res.status(200).json({
 			success: true,
-			user: usersafe,
+			user: {
+				name: user.name,
+				email: user.email,
+				avatar: user.avatar,
+				token: user.token,
+				refreshToken: user.refreshToken,
+				user_id: user._id.toString()
+			}
 		});
 	}
 );

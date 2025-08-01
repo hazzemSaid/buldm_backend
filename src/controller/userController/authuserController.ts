@@ -7,7 +7,9 @@ import asyncWrapper from "../../middleware/asyncwrapper";
 import userModel from "../../model/userModel";
 import { compare, hash } from "../../utils/bcryptcodegen";
 import ErrorHandler from "../../utils/error";
-import sendemail from "../../utils/mailersend";
+ import sendVerificationEmail from "../../utils/gmail"
+
+  // await sendVerificationEmail(email, code); // استخدام Resend هنا
 devenv.config();
 if (
   !process.env.JWT_SECRET ||
@@ -136,7 +138,7 @@ const register = asyncWrapper(async (req, res, next) => {
   const bcryptcode: string = await hash(code);
 
   try {
-    await sendemail(email, code);
+    await sendVerificationEmail(email, code);
   } catch (err) {
     const error = ErrorHandler.createError(
       "error in sending email",
@@ -257,7 +259,7 @@ const resendVerificationCode = asyncWrapper(async (req, res, next) => {
   user.verificationCode = bcryptcode;
   await user.save();
   try {
-    await sendemail(email, code);
+    await sendVerificationEmail(email, code);
   } catch (err) {
     const error = ErrorHandler.createError(
       "error in sending email",
@@ -293,7 +295,7 @@ const forgotPassword = asyncWrapper(async (req, res, next) => {
 
   await user.save();
   try {
-    await sendemail(email, code);
+    await sendVerificationEmail(email, code);
   } catch (err) {
     const error = ErrorHandler.createError(
       "error in sending email",

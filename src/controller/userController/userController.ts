@@ -3,7 +3,6 @@ import { validationResult } from "express-validator";
 import asyncWrapper from "../../middleware/asyncwrapper";
 import userModel from "../../model/userModel";
 import ErrorHandler from "../../utils/error"; // استيراد الخطأ المخصص
-import { usersafe } from "../userController/authuserController";
 
 // نوع خاص للخطأ مع كود حالة
 import fs from "fs";
@@ -30,18 +29,18 @@ export const getUser = asyncWrapper(
 			const err = ErrorHandler.createError("User not found", 404);
 			return next(err);
 		}
-		const usersafe: usersafe = {
-			name: user.name,
-			user_id: user._id.toString(),
 
-			email: user.email,
-			avatar: user.avatar,
-			token: user.token as string,
-			refreshToken: user.refreshToken as string,
-		}
 		return res.status(200).json({
 			success: true,
-			user: usersafe,
+			user: {
+				"user_id": user.id
+				,
+				"email": user.email,
+				"name": user.name,
+				"avatar": user.avatar,
+				"token": user.token,
+				"refreshToken": user.refreshToken
+			}
 		});
 	}
 );
@@ -92,11 +91,15 @@ const updateuser = asyncWrapper(
 			return next(err);
 		}
 		if (req.file) {
-			const result = await cloudinary.uploader.upload(req.file.path, {
-				folder: "profile_images",
-			});
-			user.avatar = result.secure_url;
-			await fs.unlinkSync(req.file.path);
+			try {
+				const result = await cloudinary.uploader.upload(req.file.path, {
+					folder: "profile_images",
+				});
+				user.avatar = result.secure_url;
+				await fs.promises.unlink(req.file.path);
+			} catch (err) {
+				return next(ErrorHandler.createError("File upload failed", 500, err));
+			}
 		}
 
 		await user.save();

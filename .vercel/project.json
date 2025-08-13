@@ -1,1 +1,16 @@
-{"projectId":"prj_6qHAdfikWSd4Dvk3BAKNoJQ0uuur","orgId":"team_uABnO7snvt0O4TAGG1hyP4Mf","projectName":"trae_buldm_duc0"}
+{
+  "projectId": "prj_af2a8qZKXoEpp6dvd78lyj4DE6eG",
+  "orgId": "team_uABnO7snvt0O4TAGG1hyP4Mf",
+  "projectName": "buldm",
+  "settings": {
+    "createdAt": 1754935126446,
+    "framework": null,
+    "devCommand": null,
+    "installCommand": null,
+    "buildCommand": null,
+    "outputDirectory": null,
+    "rootDirectory": null,
+    "directoryListing": false,
+    "nodeVersion": "22.x"
+  }
+}

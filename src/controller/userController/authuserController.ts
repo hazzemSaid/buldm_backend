@@ -7,7 +7,7 @@ import asyncWrapper from "../../middleware/asyncwrapper";
 import userModel from "../../model/userModel";
 import { compare, hash } from "../../utils/bcryptcodegen";
 import ErrorHandler from "../../utils/error";
- import sendVerificationEmail from "../../utils/gmail"
+import sendVerificationEmail from "../../utils/gmail";
 
   // await sendVerificationEmail(email, code); // استخدام Resend هنا
 devenv.config();
@@ -721,24 +721,7 @@ const googleAuth = asyncWrapper(async (req, res, next) => {
       user: usersafe,
     });
   }
-  const newToken = JWT.sign(
-    {
-      email: email,
-      _id: new mongoose.Types.ObjectId(),
-      role: "user",
-    },
-    JWT_SECRET,
-    { expiresIn: "1h" }
-  );
-  const newrefreshToken = JWT.sign(
-    {
-      email: email,
-      _id: new mongoose.Types.ObjectId(),
-      role: "user",
-    },
-    JWT_SECRET,
-    { expiresIn: "7d" }
-  );
+  // Tokens will be created after user is created to ensure _id matches
   const dummyPassword = Math.random().toString(36).slice(-8); // كلمة سر عشوائية
   const decodepassword = await hash(dummyPassword);
 
@@ -751,9 +734,29 @@ const googleAuth = asyncWrapper(async (req, res, next) => {
     verificationCode: "",
     forgotPasswordToken: "",
     role: "user",
-    token: newToken,
-      refreshToken:newrefreshToken,
   });
+
+  // Create tokens using the created user's _id
+  const newToken = JWT.sign(
+    {
+      email: email,
+      _id: newuser._id as mongoose.Types.ObjectId,
+      role: "user",
+    },
+    JWT_SECRET,
+    { expiresIn: "1h" }
+  );
+  const newrefreshToken = JWT.sign(
+    {
+      email: email,
+      _id: newuser._id as mongoose.Types.ObjectId,
+      role: "user",
+    },
+    JWT_SECRET,
+    { expiresIn: "7d" }
+  );
+  newuser.token = newToken;
+  newuser.refreshToken = newrefreshToken;
 
   await newuser.save({});
   const usersafe: usersafe = {

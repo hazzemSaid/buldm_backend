@@ -42,10 +42,12 @@ import { postValidation } from "../../utils/validation";
 
 // إعداد التخزين للصور باستخدام multer
 const storage = multer.diskStorage({
-  destination: "uploads/",
-  filename: function (_req, file, cb) {
-    cb(null, "-" + Date.now() + path.extname(file.originalname));
+  destination: (req, file, cb) => {
+    cb(null, '/tmp'); // writeable directory in Vercel
   },
+  filename: (req, file, cb) => {
+    cb(null, Date.now() + path.extname(file.originalname));
+  }
 });
 
 const upload = multer({ storage });
@@ -194,53 +196,114 @@ postRouter
    *       401:
    *         description: Unauthorized - missing or invalid token
    */
-  .get("/", postController.getAllPosts)
-  .put(
-    "/:id",
-    upload.array("images", 12),
-    postValidation,
-    postController.updatepost
-  )
-  .delete("/:id", postController.deletePostById)
-  /**
-   * @swagger
-   * /api/v1/post/user/{id}:
-   *   get:
-   *     summary: Get all posts by user ID
-   *     tags: [Posts]
-   *     security:
-   *       - bearerAuth: []
-   *     parameters:
-   *       - in: path
-   *         name: id
-   *         schema:
-   *           type: string
-   *         required: true
-   *         description: The user ID
-   *       - in: header
-   *         name: Authorization
-   *         schema:
-   *           type: string
-   *         required: true
-   *         description: Bearer token for authentication (Format - Bearer <token>)
-   *     responses:
-   *       200:
-   *         description: List of posts for the specified user retrieved successfully
-   *         content:
-   *           application/json:
-   *             schema:
-   *               type: object
-   *               properties:
-   *                 success:
-   *                   type: boolean
-   *                 posts:
-   *                   type: array
-   *                   items:
-   *                     $ref: '#/components/schemas/Post'
-   *       401:
-   *         description: Unauthorized - missing or invalid token
-   *       404:
-   *         description: User not found
-   */
-  .get("/user/:id", verifyToken, postController.getallpostByuserid);
+  .get("/", postController.getAllPosts);
+
+/**
+ * @swagger
+ * /api/v1/post/{id}:
+ *   put:
+ *     summary: Update a post by ID
+ *     tags: [Posts]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: The post ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               title:
+ *                 type: string
+ *               description:
+ *                 type: string
+ *               images:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                   format: binary
+ *     responses:
+ *       200:
+ *         description: Post updated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Post'
+ *       400:
+ *         description: Invalid input
+ *       401:
+ *         description: Unauthorized
+ *       404:
+ *         description: Post not found
+ */
+postRouter.put("/:id", upload.array("images", 12), postValidation, postController.updatepost);
+
+/**
+ * @swagger
+ * /api/v1/post/{id}:
+ *   delete:
+ *     summary: Delete a post by ID
+ *     tags: [Posts]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: The post ID
+ *     responses:
+ *       200:
+ *         description: Post deleted successfully
+ *       401:
+ *         description: Unauthorized
+ *       404:
+ *         description: Post not found
+ */
+postRouter.delete("/:id", postController.deletePostById);
+
+/**
+ * @swagger
+ * /api/v1/post/user/{id}:
+ *   get:
+ *     summary: Get all posts by user ID
+ *     tags: [Posts]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: The user ID
+ *     responses:
+ *       200:
+ *         description: List of posts for the specified user retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 posts:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/Post'
+ *       401:
+ *         description: Unauthorized - missing or invalid token
+ *       404:
+ *         description: User not found
+ */
+postRouter.get("/user/:id", verifyToken, postController.getallpostByuserid);
+
 export default postRouter;

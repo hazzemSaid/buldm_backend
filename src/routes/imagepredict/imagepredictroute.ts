@@ -8,11 +8,17 @@ import imagepredict from "../../services/imageperdict";
 const imagePredictionRouter = Router();
 /**
  * @swagger
- * /api/predict:
+ * tags:
+ *   name: Image Prediction
+ *   description: Image prediction endpoints
+ */
+
+/**
+ * @swagger
+ * /api/v1/predict:
  *   post:
  *     summary: Upload images and predict their content
- *     consumes:
- *       - multipart/form-data
+ *     tags: [Image Prediction]
  *     requestBody:
  *       required: true
  *       content:
@@ -28,14 +34,32 @@ const imagePredictionRouter = Router();
  *     responses:
  *       200:
  *         description: Prediction results
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 predictedItems:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       filename:
+ *                         type: string
+ *                       prediction:
+ *                         type: string
+ *       400:
+ *         description: No images uploaded
  */
 
 // إعداد التخزين المؤقت للصور باستخدام multer
 const storage = multer.diskStorage({
-  destination: "uploads/",
-  filename: function (_req, file, cb) {
-    cb(null, "-" + Date.now() + path.extname(file.originalname));
+  destination: (req, file, cb) => {
+    cb(null, '/tmp'); // writeable directory in Vercel
   },
+  filename: (req, file, cb) => {
+    cb(null, Date.now() + path.extname(file.originalname));
+  }
 });
 const upload = multer({ storage });
 

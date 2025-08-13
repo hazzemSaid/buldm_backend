@@ -20,13 +20,20 @@ var morgan = require("morgan");
 dotenv.config();
 
 const app = express();
-const httpserver = http.createServer(app);
-const io = new Server(httpserver, {
-	cors: {
-		origin: "*",
-		methods: ["GET", "POST"],
-	},
-});
+
+// Only create HTTP server and Socket.IO for non-Vercel environments
+let httpserver: http.Server | undefined;
+let io: Server | undefined;
+
+if (!process.env.VERCEL) {
+	httpserver = http.createServer(app);
+	io = new Server(httpserver, {
+		cors: {
+			origin: "*",
+			methods: ["GET", "POST"],
+		},
+	});
+}
 
 app.use(morgan("dev"));
 app.use(cors());
@@ -78,54 +85,62 @@ app.use((req: Request, res: Response) => {
 	});
 });
 
-//real time socket connection
+//real time socket connection (only for non-Vercel environments)
 const users = new Map();
 
-io.on("connection", (socket) => {
-	socket.on("register", ({ userId }) => {
-		users.set(userId, socket.id);
-		(socket as any).userId = userId;
-		console.log(`${userId} registered with socket ${socket.id}`);
-	});
+if (io) {
+	io.on("connection", (socket) => {
+		socket.on("register", ({ userId }) => {
+			users.set(userId, socket.id);
+			(socket as any).userId = userId;
+			console.log(`${userId} registered with socket ${socket.id}`);
+		});
 
-	socket.on("disconnect", () => {
-		for (const [userId, sockId] of users.entries()) {
-			if (sockId === socket.id) {
-				users.delete(userId);
-				break;
+		socket.on("disconnect", () => {
+			for (const [userId, sockId] of users.entries()) {
+				if (sockId === socket.id) {
+					users.delete(userId);
+					break;
+				}
 			}
-		}
-		console.log(`User disconnected: ${socket.id}`);
+			console.log(`User disconnected: ${socket.id}`);
+		});
+
+		socket.on("SendMessage", async ({ touserId, Message }) => {
+			const toSocketId = users.get(touserId);
+			const from = (socket as any).userId;
+
+			console.log(`Message from ${from} to ${touserId}: ${Message}`);
+
+			// ✅ احفظ الرسالة دائمًا
+			try {
+				MessageEvent = await MessageModel.create({
+					from: from,
+					to: touserId,
+					message: Message,
+					// timestamp: new Date().toISOString(), // ✅ UTC ISO timestamp
+				});
+			} catch (err) {
+				console.error("Error saving message:", err);
+			}
+
+			// ✅ ابعت الرسالة لحظيًا لو المستخدم متصل
+			if (toSocketId && io) {
+				console.log("go go go ")
+				io.to(toSocketId).emit("ReceiveMessage", { from, MessageEvent });
+				socket.emit("ReceiveMessage", { from, MessageEvent });
+			}
+		});
 	});
+}
 
-	socket.on("SendMessage", async ({ touserId, Message }) => {
-		const toSocketId = users.get(touserId);
-		const from = (socket as any).userId;
+// Export the Express app for Vercel serverless functions
+export default app;
 
-		console.log(`Message from ${from} to ${touserId}: ${Message}`);
-
-		// ✅ احفظ الرسالة دائمًا
-		try {
-			MessageEvent = await MessageModel.create({
-				from: from,
-				to: touserId,
-				message: Message,
-				// timestamp: new Date().toISOString(), // ✅ UTC ISO timestamp
-			});
-		} catch (err) {
-			console.error("Error saving message:", err);
-		}
-
-		// ✅ ابعت الرسالة لحظيًا لو المستخدم متصل
-		if (toSocketId) {
-			console.log("go go go ")
-			io.to(toSocketId).emit("ReceiveMessage", { from, MessageEvent });
-			socket.emit("ReceiveMessage", { from, MessageEvent });
-		}
+// Start server only in non-Vercel environments
+if (!process.env.VERCEL && httpserver) {
+	const PORT = process.env.PORT || 3000;
+	httpserver.listen(PORT, () => {
+		console.log(`Server running on port ${PORT}`);
 	});
-});
-
-const PORT = process.env.PORT || 3000;
-httpserver.listen(PORT, () => {
-	console.log(`Server running on port ${PORT}`);
-});
+}

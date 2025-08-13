@@ -14,6 +14,7 @@ Provides secure APIs for user authentication, lost/found item management, geoloc
 - [Project Structure](#project-structure)
 - [Core API Endpoints](#core-api-endpoints)
 - [Validation & Error Handling](#validation--error-handling)
+- [Deployment](#deployment)
 - [Contribution](#contribution)
 - [License](#license)
 
@@ -47,6 +48,46 @@ Provides secure APIs for user authentication, lost/found item management, geoloc
 
 - **Robust Error Handling**
   - Consistent JSON error responses with status codes and messages
+
+---
+
+## Deployment
+
+### Deploying to Vercel
+
+This project is configured for deployment on Vercel. Follow these steps to deploy:
+
+1. **Install Vercel CLI** (if not already installed)
+   ```bash
+   npm install -g vercel
+   ```
+
+2. **Login to Vercel**
+   ```bash
+   vercel login
+   ```
+
+3. **Build the project**
+   ```bash
+   npm run build
+   ```
+
+4. **Deploy to Vercel**
+   ```bash
+   vercel
+   ```
+
+5. **Set Environment Variables**
+   - Go to your Vercel project dashboard
+   - Navigate to Settings > Environment Variables
+   - Add all the required environment variables from `.env.example`
+
+6. **Production Deployment**
+   ```bash
+   vercel --prod
+   ```
+
+The project is already configured with the necessary `vercel.json` file for proper routing and serverless function configuration.
 
 - **Extensible & Modular**
   - Clean codebase with clear separation of concerns

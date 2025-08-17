@@ -50,5 +50,5 @@ const userSchema = new mongoose.Schema({
 }, {
 	versionKey: false,
 });
-userSchema.index({ username: 1, id: 1 });
+userSchema.index({ username: 1, id: 1 , _id:1 });
 export default mongoose.model('user', userSchema);

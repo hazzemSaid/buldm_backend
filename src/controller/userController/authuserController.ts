@@ -372,7 +372,7 @@ const resetPassword = asyncWrapper(async (req, res, next) => {
     );
     console.log(token);
   } catch (error) {
-    const err = ErrorHandler.createError("token expired", 401, error as any);
+    const err = ErrorHandler.createError("take a validation code first ", 401, error as any);
     return next(err);
   }
   const hashedpassword = await hash(password);

@@ -1,11 +1,12 @@
 import { Router } from "express";
 import multer from "multer";
 import path from "path";
+import commentController from "../../controller/postController/commentController/commentController";
+import likeController from "../../controller/postController/likeController/likeController";
 import postController from "../../controller/postController/postController";
 import verifyToken from "../../middleware/verifyToken";
 import limiter from "../../utils/ratelimit";
 import { postValidation } from "../../utils/validation";
-
 /**
  * @swagger
  * components:
@@ -118,7 +119,14 @@ postRouter
     postValidation,
     limiter(5),
     postController.createPost
-  )
+  ).get("/:postId/like",
+    likeController.getalllikebypostid
+  ).post('/:postId/like',likeController.addliketopostbyuserid)
+  .get('/:postId/comment',commentController.getallcommentbypostid)
+  .post('/:postId/comment',commentController.createComment)
+  .post('/:postId/comment/:parentCommentId',commentController.replyComment)
+  .delete('/:postId/comment/:commentId',commentController.deleteComment)
+  .put('/:postId/comment/:commentId',commentController.updateComment)
   /**
    * @swagger
    * /api/v1/post/{id}:

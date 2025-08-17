@@ -7,4 +7,5 @@ const messageSchema = new mongoose.Schema({
   message: { type: String, required: true },
   timestamp: { type: Date, default: () => new Date().toISOString() }});
 
-module.exports = mongoose.model("Message", messageSchema);
+export default mongoose.model("Message", messageSchema);
+

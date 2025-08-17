@@ -89,6 +89,7 @@ PostSchema.index({ status: 1 }); // إنشاء فهرس عادي للحالة
 PostSchema.index({ createdAt: -1 }); // إنشاء فهرس عكسي لتاريخ الإنشاء
 PostSchema.index({ user: 1 }); // إنشاء فهرس عادي للمستخدم
 PostSchema.index({ category: 1 }); // إنشاء فهرس عادي للفئة
+PostSchema.index({user_id: 1 }); // إنشاء فهرس عادي لل _id
 
 export default mongoose.model("Post", PostSchema);
 /*

@@ -1,6 +1,12 @@
 import mongoose from "mongoose";
 const PostSchema = new mongoose.Schema(
   {
+    
+    repost:[{
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "user",
+      default: []
+    }],
     title: {
       type: String,
       required: true,
@@ -72,6 +78,7 @@ const PostSchema = new mongoose.Schema(
       default: Date.now,
     },
   },
+  
   {
     timestamps: true, // يضيف createdAt و updatedAt تلقائيًا
     toJSON: {
@@ -81,7 +88,8 @@ const PostSchema = new mongoose.Schema(
         delete ret._id;
       },
     },
-  }
+  },
+  
 );
 PostSchema.index({ "location.coordinates": "2dsphere" }); // إنشاء فهرس مكاني للبحث عن المواقع
 PostSchema.index({ title: "text", description: "text" }); // إنشاء فهرس نصي للبحث عن العناوين والأوصاف

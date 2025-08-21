@@ -2,7 +2,6 @@ import cors from "cors";
 import dotenv from "dotenv";
 import express, { NextFunction, Request, Response } from "express";
 import http from "http";
-import mongoose from "mongoose";
 import path from "path";
 import { Server } from "socket.io";
 import { setupSwagger } from "./config/swagger";
@@ -13,7 +12,9 @@ import sendnotificationRoute from "./routes/notificationRoute/sendnotificationRo
 import postRoute from "./routes/postRoute/postRoute";
 import reportRoute from "./routes/reportRoute/reportRoute";
 import userRoute from "./routes/userRoute/userRoute";
+import statusRoute from "./routes/statusRouter/statusRouter";
 import { ICustomError } from "./utils/error";
+import { initDB, connectionGuard } from "./config/db";
 const MessageModel = require("./model/messageModel"); // ✅ تأكد من المسار الصحيح
 
 var morgan = require("morgan");
@@ -44,16 +45,15 @@ app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, "static")));
 app.use(express.static(path.join(__dirname, "uploads")));
 
-const url = process.env.MONGODB_URL as string;
+// Ensure DB connection per-request (important for serverless like Vercel)
+app.use(connectionGuard);
 
-mongoose
-	.connect(url)
-	.then(() => {
-		console.log("MongoDB connected");
-	})
-	.catch((err) => {
-		console.log("MongoDB connection error: ", err);
-	});
+// Eagerly warm up DB connection in non-Vercel environments
+if (!process.env.VERCEL) {
+  initDB().catch((err) => {
+    console.error("MongoDB initial connection error:", err?.message || err);
+  });
+}
 setupSwagger(app);
 // Routes
 app.use("/api/v1/user", userRoute);
@@ -62,6 +62,7 @@ app.use("/api/v1/notification", sendnotificationRoute.notificationRouter);
 app.use("/api/v1/report", reportRoute);
 app.use("/api/v1/predict", imagePredictionRouter);
 app.use("/api/v1/chat", messageRoute);
+app.use("/api/v1/status", verifyToken, statusRoute);
 // Error handling middleware
 
 app.use(

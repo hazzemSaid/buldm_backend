@@ -5,7 +5,6 @@ import ErrorHandler from "../utils/error";
 
 const verifyToken = async (req: any, res: Response, next: NextFunction) => {
 	const authHeader = req.headers["authorization"] || req.headers["Authorization"];
-	console.log(authHeader);
 	if (!authHeader || typeof authHeader !== "string") {
 		const err = ErrorHandler.createError("Authorization header is missing", 401);
 		return next(err);

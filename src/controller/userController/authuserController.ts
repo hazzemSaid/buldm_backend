@@ -709,7 +709,6 @@ const googleAuth = asyncWrapper(async (req, res, next) => {
     const usersafe: usersafe = {
       name: olduser.name,
     user_id: olduser._id.toString(),
-
       email: olduser.email,
       avatar: olduser.avatar,
       token: olduser.token,
@@ -760,11 +759,10 @@ const googleAuth = asyncWrapper(async (req, res, next) => {
 
   await newuser.save({});
   const usersafe: usersafe = {
-    name: newuser.name,
+    name: email.split("@")[0],
     user_id: newuser._id.toString(),
-
-    email: newuser.email,
-    avatar: newuser.avatar,
+    email: email,
+    avatar: picture,
     token: newuser.token as string,
     refreshToken:newuser.refreshToken as string,
   };

@@ -1,5 +1,5 @@
 import mongoose from "mongoose";
-import type { Request, Response, NextFunction } from "express";
+import type { Request, Response, NextFunction, RequestHandler } from "express";
 
 let connectPromise: Promise<typeof mongoose> | null = null;
 
@@ -42,20 +42,24 @@ export async function initDB(): Promise<typeof mongoose> {
 }
 
 // Express middleware: ensure DB connectivity per request (useful on serverless)
-export async function connectionGuard(_req: Request, res: Response, next: NextFunction) {
+export const connectionGuard: RequestHandler = async (
+  _req: Request,
+  res: Response,
+  next: NextFunction
+) => {
   if (isConnected()) return next();
   try {
     await initDB();
-    return next();
+    next();
   } catch (err: any) {
-    return res.status(503).json({
+    res.status(503).json({
       status: "error",
       error: "Database unavailable",
       statuscode: 503,
       data: err?.message || "no data",
     });
   }
-}
+};
 
 // Optional: log connection state changes
 mongoose.connection.on("disconnected", () => console.warn("MongoDB disconnected"));

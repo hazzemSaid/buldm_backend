@@ -4,7 +4,7 @@ import path from "path";
 import commentController from "../../controller/postController/commentController/commentController";
 import likeController from "../../controller/postController/likeController/likeController";
 import postController from "../../controller/postController/postController";
-import verifyToken from "../../middleware/verifyToken";
+import repostController from "../../controller/postController/repostController/repostcontroller";
 import limiter from "../../utils/ratelimit";
 import { postValidation } from "../../utils/validation";
 /**
@@ -127,6 +127,7 @@ postRouter
   .post('/:postId/comment/:parentCommentId',commentController.replyComment)
   .delete('/:postId/comment/:commentId',commentController.deleteComment)
   .put('/:postId/comment/:commentId',commentController.updateComment)
+.post('/:postId/repost',repostController.addtorepostuser)
   /**
    * @swagger
    * /api/v1/post/{id}:
@@ -312,6 +313,7 @@ postRouter.delete("/:id", postController.deletePostById);
  *       404:
  *         description: User not found
  */
-postRouter.get("/user/:id", verifyToken, postController.getallpostByuserid);
-
+postRouter.get("/user/:id", postController.getallpostByuserid);
+postRouter.get("/user/:id/repost", postController.getMyRepostedPosts);
+postRouter.get("/description/:description", postController.getpostbydescription);
 export default postRouter;

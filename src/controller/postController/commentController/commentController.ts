@@ -20,7 +20,10 @@ const createComment = asyncWrapper(async (req: any, res: any, next: NextFunction
 
 const getallcommentbypostid = asyncWrapper(async (req: any, res: any, next: NextFunction) => {
 	const { postId } = req.params;
-	const result = await commentModel.find({ postId });
+	const page = parseInt(req.query.page) || 2;
+	const limit = parseInt(req.query.limit) || 10;
+	const skip = (page - 1) * limit;
+	const result = await commentModel.find({ postId }).sort({ createdAt: -1 }).limit(limit).skip(skip);
 	return res.status(200).json({
 		"status": "successfly",
 		'data': result

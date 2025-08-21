@@ -23,6 +23,22 @@ const userSchema = new mongoose.Schema({
 		type: String,
 		default: "https://res.cloudinary.com/dr5cpch1n/image/upload/v1752943485/Unknown_person_o3xaku.jpg",
 	},
+	
+	
+	private:{
+		type: Boolean,
+		default: false,
+	},
+	backgroundImage:{
+		type: String,
+		default: "https://res.cloudinary.com/dr5cpch1n/image/upload/v1752943485/Unknown_person_o3xaku.jpg",
+	},
+	bio:{
+		type: String,
+		default: null,
+		trim: true,
+		limit: 500,
+	},
 	token: {
 		type: String,
 	},

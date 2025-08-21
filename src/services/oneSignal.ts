@@ -12,6 +12,7 @@ const sendNotificationService = async (
     data?: Record<string, any>,
     androidChannelId?: string,
     androidSound?: string,
+    extraFields?: Record<string, any>,
 ) => {
     // Build base payload
     const body: any = {
@@ -57,6 +58,15 @@ const sendNotificationService = async (
         body.include_player_ids = Array.isArray(playerId) ? playerId : [playerId];
     } else {
         body.included_segments = ["All"]; // fallback broadcast
+    }
+
+    // Merge any extra OneSignal-supported fields last so they can override defaults if needed
+    if (extraFields && typeof extraFields === 'object') {
+        for (const [k, v] of Object.entries(extraFields)) {
+            if (v !== undefined && v !== null) {
+                (body as any)[k] = v;
+            }
+        }
     }
 
     try {

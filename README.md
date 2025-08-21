@@ -13,7 +13,7 @@ Backend service powering the **BULDM** (Bring Up Lost or Discovered Material) pl
 
 🔗 **Frontend Repository**: [buldm_frontend](https://github.com/hazzemSaid/buldm_frontend)
 
-<<<<<<< HEAD
+
 - [Features](#features)
 - [Tech Stack](#tech-stack)
 - [Getting Started](#getting-started)
@@ -35,7 +35,7 @@ Backend service powering the **BULDM** (Bring Up Lost or Discovered Material) pl
 - [✅ Validation & Error Handling](#-validation--error-handling)
 - [🤝 Contribution](#-contribution)
 - [📜 License](#-license)
->>>>>>> a02f6b84f2624276795831135478f7dfbeef2462
+
 
 ## 🚀 Key Features
 

@@ -72,7 +72,7 @@ Backend service powering the **BULDM** (Bring Up Lost or Discovered Material) pl
 - Fuse.js fuzzy user search
 - Robust error handling
 
-<<<<<<< HEAD
+
 - **Reporting System**
   - Users can report posts or other users
 
@@ -154,7 +154,6 @@ The project is already configured with the necessary `vercel.json` file for prop
 | **Validation**    | express-validator                    |
 | **Communication** | Resend (Email), OneSignal (Push)     |
 | **Utilities**     | Swagger, Fuse.js, Express Rate Limit |
->>>>>>> a02f6b84f2624276795831135478f7dfbeef2462
 
 ## 🏗️ Project Structure
 ```bash

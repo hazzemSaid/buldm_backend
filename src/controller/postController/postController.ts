@@ -1,3 +1,16 @@
+/**
+ * @file postController.ts
+ * @description Controller for handling post-related operations including CRUD operations, searching, and filtering
+ * @requires express
+ * @requires express-validator
+ * @requires fs
+ * @requires fuse.js
+ * @requires mongoose
+ * @requires ../../middleware/asyncwrapper
+ * @requires ../../model/postModel
+ * @requires ../../utils/cloudinaryService
+ * @requires ../../utils/error
+ */
 import { NextFunction, Request, Response } from "express";
 import { validationResult } from "express-validator";
 import fs from "fs";
@@ -7,17 +20,33 @@ import asyncWrapper from "../../middleware/asyncwrapper";
 import postModel from "../../model/postModel";
 import cloudinary from "../../utils/cloudinaryService";
 import ErrorHandler from "../../utils/error";
-// Define interface for location and predicted items
+/**
+ * @interface Location
+ * @description Interface defining the structure for location data in posts
+ * @property {[string, string]} [coordinates] - Array of latitude and longitude as strings
+ * @property {string} [placeName] - Name of the location
+ */
 interface Location {
 	coordinates?: [string, string];
 	placeName?: string;
 }
 
+/**
+ * @interface PredictedItem
+ * @description Interface for predicted items in posts (e.g., image recognition results)
+ * @property {string} [label] - Label or name of the predicted item
+ * @property {number} [confidence] - Confidence score of the prediction (0-1)
+ * @property {string} [category] - Category of the predicted item
+ */
 interface PredictedItem {
 	label?: string;
 	confidence?: number;
 	category?: string;
 }
+/**
+ * @constant hide
+ * @description Fields to exclude from query results for security and performance
+ */
 const hide = {
 	allComments: 0,
 	"user.role": 0,
@@ -28,12 +57,28 @@ const hide = {
 	"user.password": 0,
 	"user.verified": 0,
 	__v: 0,
-}
+};
+/**
+ * @interface RequestWithFiles
+ * @extends Request
+ * @description Extended request interface that includes uploaded files and user information
+ * @property {Express.Multer.File[]} [files] - Array of uploaded files
+ * @property {{_id: string}} user - Authenticated user information
+ */
 interface RequestWithFiles extends Request {
 	files?: Express.Multer.File[];
 	user: { _id: string };
 }
 
+/**
+ * @async
+ * @function createPost
+ * @description Create a new post with optional images, location, and predicted items
+ * @param {RequestWithFiles} req - Express request object with files and user info
+ * @param {Response} res - Express response object
+ * @param {NextFunction} next - Express next middleware function
+ * @returns {Promise<Response>} JSON response with created post or error
+ */
 const createPost = asyncWrapper(
 	async (req: any, res: Response, next: NextFunction) => {
 		console.log(req.body);
@@ -122,85 +167,85 @@ const createPost = asyncWrapper(
 
 		// Creating the post
 		const createdPost = await postModel.create(postData);
-		const newPost = await postModel.aggregate([
-			{
-				$match: { _id: createdPost._id }
-			},
-			{
-				$lookup: {
-					from: "users",
-					localField: "user_id",
-					foreignField: "_id",
-					as: "user"
-				}
-			},
-			{
-				$project: {
-					"user.name": 1,
-					"user.avatar": 1,
-					"user.email": 1,
-					"user.role": 1,
-					"user.createdAt": 1,
-					"user.updatedAt": 1,
-					"title": 1,
-					"description": 1,
-					"images": 1,
-					"location": 1,
-					"when": 1,
-					"status": 1,
-					"category": 1,
-					"predictedItems": 1,
-					"contactInfo": 1,
-					"user_id": 1,
-					"createdBy": 1,
-					"createdAt": 1,
-					"updatedAt": 1
+		// const newPost = await postModel.aggregate([
+		// 	{
+		// 		$match: { _id: createdPost._id }
+		// 	},
+		// 	{
+		// 		$lookup: {
+		// 			from: "users",
+		// 			localField: "user_id",
+		// 			foreignField: "_id",
+		// 			as: "user"
+		// 		}
+		// 	},
+		// 	{
+		// 		$project: {
+		// 			"user.name": 1,
+		// 			"user.avatar": 1,
+		// 			"user.email": 1,
+		// 			"user.role": 1,
+		// 			"user.createdAt": 1,
+		// 			"user.updatedAt": 1,
+		// 			"title": 1,
+		// 			"description": 1,
+		// 			"images": 1,
+		// 			"location": 1,
+		// 			"when": 1,
+		// 			"status": 1,
+		// 			"category": 1,
+		// 			"predictedItems": 1,
+		// 			"contactInfo": 1,
+		// 			"user_id": 1,
+		// 			"createdBy": 1,
+		// 			"createdAt": 1,
+		// 			"updatedAt": 1
 
-				}
-			},
-			// Likes
-			{
-				$lookup: {
-					from: "likes",
-					localField: "_id",
-					foreignField: "postId",
-					as: "likes"
-				}
-			},
-			{
-				$addFields: {
-					likes: {
-						count: { $size: { $ifNull: ["$likes.usersIDs", []] } },
-						usersIDs: { $ifNull: ["$likes.usersIDs", []] },
-						isLiked: false
-					}
-				}
-			},
-			// Comments
-			{
-				$lookup: {
-					from: "comments",
-					localField: "_id",
-					foreignField: "postId",
-					as: "comments"
-				}
-			},
-			{
-				$addFields: {
-					comments: {
-						count: { $size: "$comments" },
-						recent: { $slice: ["$comments", 2] } // 👈 أول 2 كومنت فقط
-					}
-				}
-			}
-		]);
+		// 		}
+		// 	},
+		// 	// Likes
+		// 	{
+		// 		$lookup: {
+		// 			from: "likes",
+		// 			localField: "_id",
+		// 			foreignField: "postId",
+		// 			as: "likes"
+		// 		}
+		// 	},
+		// 	{
+		// 		$addFields: {
+		// 			likes: {
+		// 				count: { $size: { $ifNull: ["$likes.usersIDs", []] } },
+		// 				usersIDs: { $ifNull: ["$likes.usersIDs", []] },
+		// 				isLiked: false
+		// 			}
+		// 		}
+		// 	},
+		// 	// Comments
+		// 	{
+		// 		$lookup: {
+		// 			from: "comments",
+		// 			localField: "_id",
+		// 			foreignField: "postId",
+		// 			as: "comments"
+		// 		}
+		// 	},
+		// 	{
+		// 		$addFields: {
+		// 			comments: {
+		// 				count: { $size: "$comments" },
+		// 				recent: { $slice: ["$comments", 2] } // 👈 أول 2 كومنت فقط
+		// 			}
+		// 		}
+		// 	}
+		// ]);
 
 
 
 		return res.status(200).json({
 			success: true,
 			message: "Post created successfully",
-			data: newPost,
+			data: createdPost,
 		});
 	}
 );
@@ -223,10 +268,143 @@ const getPostById = asyncWrapper(
 			});
 		}
 
-		const postWithAll = await postModel.aggregate([
+		const postWithCounts = await postModel.aggregate([
 			{ $match: { _id: new mongoose.Types.ObjectId(postId) } },
+			{
+				$lookup: {
+					from: "reposts",
+					localField: "_id",
+					foreignField: "postId",
+					as: "reposts",
+				},
+			},
+			{
+				$addFields: {
+					repostsCount: { $size: "$reposts" },
+				},
+			},
+			{
+				$lookup: {
+					from: "users",
+					localField: "user_id",
+					foreignField: "_id",
+					as: "user",
+				},
+			},
+			{ $unwind: "$user" },
+			{
+				$project: {
+					"user.token": 0,
+					"user.refreshToken": 0,
+					"user.password": 0,
+					"user.verificationCode": 0,
+					"user.forgotPasswordToken": 0,
+					"user.verified": 0,
+					"user.createdAt": 0,
+					"user.updatedAt": 0,
+					"user.role": 0,
+					"user.__v": 0,
+					"user.email": 0,
+					"user.private": 0,
+					"user.backgroundImage": 0,
+					"user.bio": 0,
+				},
+			},
+			// Likes count
+			{
+				$lookup: {
+					from: "likes",
+					let: { pId: "$_id" },
+					pipeline: [
+						{ $match: { $expr: { $eq: ["$postId", "$$pId"] } } },
+						{ $project: { usersIDs: { $ifNull: ["$usersIDs", []] } } },
+					],
+					as: "likesDocs",
+				},
+			},
+			{
+				$addFields: {
+					likesCount: {
+						$size: {
+							$reduce: {
+								input: "$likesDocs.usersIDs",
+								initialValue: [],
+								in: { $concatArrays: ["$$value", "$$this"] },
+							},
+						},
+					},
+				},
+			},
 
-			// Join user
+			// Comments count
+			{
+				$lookup: {
+					from: "comments",
+					let: { postId: "$_id" },
+					pipeline: [
+						{ $match: { $expr: { $eq: ["$postId", "$$postId"] } } },
+						{ $count: "count" },
+					],
+					as: "commentsCount",
+				},
+			},
+			{
+				$addFields: {
+					commentsCount: {
+						$ifNull: [{ $arrayElemAt: ["$commentsCount.count", 0] }, 0],
+					},
+				},
+			},
+
+			// Hide extra arrays
+			{
+				$project: {
+					likesDocs: 0,
+				},
+			},
+		]);
+
+		if (!postWithCounts || postWithCounts.length === 0) {
+			return res.status(404).json({
+				success: false,
+				message: "Post not found",
+			});
+		}
+
+		return res.status(200).json({
+			success: true,
+			message: "Post retrieved successfully",
+			data: postWithCounts[0], // ✅ return one document
+		});
+	}
+);
+
+const getAllPosts = asyncWrapper(
+	async (req: any, res: Response, next: NextFunction) => {
+		const page = parseInt(req.query.page) || 1;
+		const limit = parseInt(req.query.limit) || 5;
+		const skip = (page - 1) * limit;
+		const userId = new mongoose.Types.ObjectId(req.user._id); // current user id
+
+		// sort newest first
+
+		const posts = await postModel.aggregate([
+			{ $sort: { createdAt: -1 } },
+			{ $skip: skip },
+			{ $limit: limit },
+
+			// 🟢 reposts
+			{
+				$lookup: {
+					from: "reposts",
+					localField: "_id",
+					foreignField: "postId",
+					as: "reposts",
+				},
+			},
+			{ $addFields: { repostsCount: { $size: "$reposts" } } },
+
+			// 🟢 user info
 			{
 				$lookup: {
 					from: "users",
@@ -237,20 +415,40 @@ const getPostById = asyncWrapper(
 			},
 			{ $unwind: "$user" },
 
-			// Likes
+			// 🟢 comments count
+			{
+				$lookup: {
+					from: "comments",
+					let: { postId: "$_id" },
+					pipeline: [
+						{ $match: { $expr: { $eq: ["$postId", "$$postId"] } } },
+						{ $count: "count" },
+					],
+					as: "commentsCount",
+				},
+			},
+			{
+				$addFields: {
+					commentsCount: {
+						$ifNull: [{ $arrayElemAt: ["$commentsCount.count", 0] }, 0],
+					},
+				},
+			},
+
+			// 🟢 likes
 			{
 				$lookup: {
 					from: "likes",
 					let: { pId: "$_id" },
 					pipeline: [
 						{ $match: { $expr: { $eq: ["$postId", "$$pId"] } } },
-						{ $project: { _id: 0, usersIDs: { $ifNull: ["$usersIDs", []] } } },
+						{ $project: { usersIDs: { $ifNull: ["$usersIDs", []] } } },
 					],
 					as: "likesDocs",
 				},
 			},
 			{
-				$set: {
+				$addFields: {
 					likesUsers: {
 						$reduce: {
 							input: "$likesDocs.usersIDs",
@@ -261,139 +459,35 @@ const getPostById = asyncWrapper(
 				},
 			},
 			{
-				$set: {
-					likes: {
-						count: { $size: "$likesUsers" },
-						usersIDs: "$likesUsers",
-					},
-				},
-			},
-			{ $project: { likesDocs: 0, likesUsers: 0 } },
-
-			// Comments
-			{
-				$lookup: {
-					from: "comments",
-					let: { postId: "$_id" },
-					pipeline: [
-						{ $match: { $expr: { $eq: ["$postId", "$$postId"] } } },
-						{ $sort: { createdAt: -1 } },
-						{ $limit: 2 },
-					],
-					as: "recentComments",
-				},
-			},
-			{
-				$lookup: {
-					from: "comments",
-					localField: "_id",
-					foreignField: "postId",
-					as: "allComments",
-				},
-			},
-			{
 				$addFields: {
-					comments: {
-						count: { $size: "$allComments" },
-						recent: "$recentComments",
-					},
-				},
-			},
-			{
-				$project: hide
-			},
-		]);
-
-		if (!postWithAll || postWithAll.length === 0) {
-			return res.status(404).json({
-				success: false,
-				message: "Post not found",
-			});
-		}
-
-		return res.status(200).json({
-			success: true,
-			message: "Post retrieved successfully",
-			data: postWithAll[0], // ✅ return one document
-		});
-	}
-);
-
-const getAllPosts = asyncWrapper(
-	async (req: any, res: Response, next: NextFunction) => {
-		const page = parseInt(req.query.page) || 1;
-		const limit = parseInt(req.query.limit) || 2;
-		const skip = (page - 1) * limit;
-
-		// sort newest first
-		const posts = await postModel.aggregate([
-			{ $sort: { createdAt: -1 } },
-			{ $skip: skip },
-			{ $limit: limit },
-
-			// user
-			{
-				$lookup: {
-					from: "users",
-					localField: "user_id",
-					foreignField: "_id",
-					as: "user",
-				},
-			},
-			{ $unwind: "$user" },
-
-			// total comments count
-			{
-				$lookup: {
-					from: "comments",
-					localField: "_id",
-					foreignField: "postId",
-					as: "allComments",
-				},
-			},
-			{
-				$addFields: {
-					commentsCount: { $size: "$allComments" },
-				},
-			},
-			{ $project: { allComments: 0 } }, // نخفي بس الـ allComments الكبيرة
-
-			// last 10 comments
-			{
-				$lookup: {
-					from: "comments",
-					let: { postId: "$_id" },
-					pipeline: [
-						{ $match: { $expr: { $eq: ["$postId", "$$postId"] } } },
-						{ $sort: { createdAt: -1 } },
-						{ $limit: 10 },
-					],
-					as: "recentComments",
+					likesCount: { $size: "$likesUsers" },
+					isLike: { $in: [userId, "$likesUsers"] }, // 🟢 add this
 				},
 			},
 
-			// likes
-			{
-				$lookup: {
-					from: "likes",
-					localField: "_id",
-					foreignField: "postId",
-					as: "likes",
-				},
-			},
-			{
-				$addFields: {
-					likesCount: { $size: "$likes" },
-				},
-			},
-
-			// clean response (ensure recentComments not hidden)
+			// 🟢 cleanup
 			{
 				$project: {
-					...hide,
+					likesDocs: 0,
+					likesUsers: 0,
+					"user.token": 0,
+					"user.refreshToken": 0,
+					"user.password": 0,
+					"user.verificationCode": 0,
+					"user.forgotPasswordToken": 0,
+					"user.verified": 0,
+					"user.createdAt": 0,
+					"user.updatedAt": 0,
+					"user.role": 0,
+					"user.__v": 0,
+					"user.email": 0,
+					"user.private": 0,
+					"user.backgroundImage": 0,
+					"user.bio": 0,
 				},
 			},
 		]);
+
 
 
 		//   if (!posts || posts.length === 0) {
@@ -523,6 +617,19 @@ const getallpostByuserid = asyncWrapper(
 			},
 			{
 				$lookup: {
+					from: "reposts",
+					localField: "_id",
+					foreignField: "postId",
+					as: "reposts",
+				},
+			},
+			{
+				$addFields: {
+					repostsCount: { $size: "$reposts" },
+				},
+			},
+			{
+				$lookup: {
 					from: "users",
 					localField: "user_id",
 					foreignField: "_id",
@@ -533,38 +640,66 @@ const getallpostByuserid = asyncWrapper(
 				$unwind: "$user",
 			},
 			{
-				$project: hide,
+				$project: {
+					"user.token": 0,
+					"user.refreshToken": 0,
+					"user.password": 0,
+					"user.verificationCode": 0,
+					"user.forgotPasswordToken": 0,
+					"user.verified": 0,
+					"user.createdAt": 0,
+					"user.updatedAt": 0,
+					"user.role": 0,
+					"user.__v": 0,
+					"user.email": 0,
+					"user.private": 0,
+					"user.backgroundImage": 0,
+					"user.bio": 0,
+				},
 			},
 			{
 				$sort: { createdAt: -1 },
 			},
 			//like and comment
 			{
+				// 🟢 Likes count
 				$lookup: {
 					from: "likes",
-					localField: "_id",
-					foreignField: "postId",
-					as: "likes",
+					let: { pId: "$_id" },
+					pipeline: [
+						{ $match: { $expr: { $eq: ["$postId", "$$pId"] } } },
+						{ $count: "count" },
+					],
+					as: "likesCount",
 				},
 			},
 			{
 				$addFields: {
-					likesCount: { $size: "$likes" },
+					likesCount: {
+						$ifNull: [{ $arrayElemAt: ["$likesCount.count", 0] }, 0],
+					},
 				},
 			},
 			{
+				// 🟢 Comments count
 				$lookup: {
 					from: "comments",
-					localField: "_id",
-					foreignField: "postId",
-					as: "comments",
+					let: { pId: "$_id" },
+					pipeline: [
+						{ $match: { $expr: { $eq: ["$postId", "$$pId"] } } },
+						{ $count: "count" },
+					],
+					as: "commentsCount",
 				},
 			},
 			{
 				$addFields: {
-					commentsCount: { $size: "$comments" },
+					commentsCount: {
+						$ifNull: [{ $arrayElemAt: ["$commentsCount.count", 0] }, 0],
+					},
 				},
-			},
+			}
+
 		])
 		if (!posts) {
 			const error = ErrorHandler.createError("No posts found", 404, "no data");
@@ -591,6 +726,20 @@ const getMyRepostedPosts = asyncWrapper(
 				{ $sort: { createdAt: -1 } },
 				{
 					$lookup: {
+						from: "reposts",
+						localField: "_id",
+						foreignField: "postId",
+						as: "reposts",
+					},
+				},
+				{
+					$addFields: {
+						repostsCount: { $size: "$reposts" },
+					},
+				},
+				// 🟢 user
+				{
+					$lookup: {
 						from: "users",
 						localField: "user_id",
 						foreignField: "_id",
@@ -599,29 +748,71 @@ const getMyRepostedPosts = asyncWrapper(
 				},
 				{ $unwind: "$user" },
 				{
-					$lookup: {
-						from: "likes",
-						localField: "_id",
-						foreignField: "postId",
-						as: "likes",
+					$project: {
+						"user.token": 0,
+						"user.refreshToken": 0,
+						"user.password": 0,
+						"user.verificationCode": 0,
+						"user.forgotPasswordToken": 0,
+						"user.verified": 0,
+						"user.createdAt": 0,
+						"user.updatedAt": 0,
+						"user.role": 0,
+						"user.__v": 0,
+						"user.email": 0,
+						"user.private": 0,
+						"user.backgroundImage": 0,
+						"user.bio": 0,
 					},
 				},
-				{ $addFields: { likesCount: { $size: "$likes" } } },
+				// 🟢 likes count
 				{
 					$lookup: {
-						from: "comments",
-						let: { postId: "$_id" },
+						from: "likes",
+						let: { pId: "$_id" },
 						pipeline: [
-							{ $match: { $expr: { $eq: ["$postId", "$$postId"] } } },
-							{ $sort: { createdAt: -1 } },
-							{ $limit: 2 }
+							{ $match: { $expr: { $eq: ["$postId", "$$pId"] } } },
+							{ $count: "count" },
 						],
-						as: "comments",
+						as: "likesCount",
+					},
+				},
+				{
+					$addFields: {
+						likesCount: {
+							$ifNull: [{ $arrayElemAt: ["$likesCount.count", 0] }, 0],
+						},
 					},
 				},
 
-				{ $addFields: { commentsCount: { $size: "$comments" } } },
-				{ $addFields: { repostsCount: { $size: { $ifNull: ["$repost", []] } } } },
+				// 🟢 comments count
+				{
+					$lookup: {
+						from: "comments",
+						let: { pId: "$_id" },
+						pipeline: [
+							{ $match: { $expr: { $eq: ["$postId", "$$pId"] } } },
+							{ $count: "count" },
+						],
+						as: "commentsCount",
+					},
+				},
+				{
+					$addFields: {
+						commentsCount: {
+							$ifNull: [{ $arrayElemAt: ["$commentsCount.count", 0] }, 0],
+						},
+					},
+				},
+
+				// 🟢 reposts count
+				{
+					$addFields: {
+						repostsCount: { $size: { $ifNull: ["$repost", []] } },
+					},
+				},
+
+				// 🟢 clean response
 				{ $project: hide },
 			]);
 
@@ -634,103 +825,131 @@ const getMyRepostedPosts = asyncWrapper(
 			return next(err);
 		}
 	}
-);
-const getpostbydescription = asyncWrapper(async (req: any, res: any) => {
-    const description = req.params.description;
-    const user = await postModel.find({}, { description: 1 });
-    const options = {
-        keys: ["description"],
-        includeScore: true,
-        threshold: 0.4,
-        distance: 100,
-    };
-    const fuse = new Fuse(user, options);
-    const result = fuse.search(description);
-    
-    if (result.length === 0) {
-        return res.status(200).json({
-            success: true,
-            posts: []
-        });
-    }
-    
-    const postIds = result.map(r => r.item._id);
-    
-    const posts = await postModel.aggregate([
-        { $match: { _id: { $in: postIds } } },
-        { $sort: { createdAt: -1 } },
-        // user lookup
-        {
-            $lookup: {
-                from: "users",
-                localField: "user_id",
-                foreignField: "_id",
-                as: "user",
-            },
-        },
-        { $unwind: "$user" },
-        // total comments count
-        {
-            $lookup: {
-                from: "comments",
-                localField: "_id",
-                foreignField: "postId",
-                as: "allComments",
-            },
-        },
-        {
-            $addFields: {
-                commentsCount: { $size: "$allComments" },
-            },
-        },
-        { $project: { allComments: 0 } },
-        // recent comments
-        {
-            $lookup: {
-                from: "comments",
-                let: { postId: "$_id" },
-                pipeline: [
-                    { $match: { $expr: { $eq: ["$postId", "$$postId"] } } },
-                    { $sort: { createdAt: -1 } },
-                    { $limit: 10 },
-                ],
-                as: "recentComments",
-            },
-        },
-        // likes
-        {
-            $lookup: {
-                from: "likes",
-                localField: "_id",
-                foreignField: "postId",
-                as: "likes",
-            },
-        },
-        {
-            $addFields: {
-                likesCount: { $size: "$likes" },
-                isLiked: {
-                    $cond: {
-                        if: { $gt: [{ $size: { $filter: { input: "$likes.usersIDs", as: "userId", cond: { $eq: ["$$userId", req.user?._id] } } } }, 0] },
-                        then: true,
-                        else: false
-                    }
-                }
-            },
-        },
-        // clean response
-        {
-            $project: {
-                ...hide,
-            },
-        },
-    ]);
 
-    return res.status(200).json({
-        success: true,
-        posts: posts,
-    });
-})
+); const getpostbydescription = asyncWrapper(async (req: any, res: any, next: NextFunction) => {
+	const description = req.params.description;
+	const user = await postModel.find({}, { description: 1 });
+
+	const options = {
+		keys: ["description"],
+		includeScore: true,
+		threshold: 0.4,
+		distance: 100,
+	};
+
+	const fuse = new Fuse(user, options);
+	const result = fuse.search(description);
+
+	if (result.length === 0) {
+		return res.status(200).json({ success: true, posts: [] });
+	}
+
+	const postIds = result.map(r => r.item._id);
+
+	const posts = await postModel.aggregate([
+		{ $match: { _id: { $in: postIds } } },
+		{ $sort: { createdAt: -1 } },
+
+		// 🟢 reposts count
+		{
+			$addFields: {
+				repostsCount: { $size: { $ifNull: ["$repost", []] } },
+			},
+		},
+
+		// 🟢 user
+		{
+			$lookup: {
+				from: "users",
+				localField: "user_id",
+				foreignField: "_id",
+				as: "user",
+			},
+		},
+		{ $unwind: "$user" },
+
+		// 🟢 comments count
+		{
+			$lookup: {
+				from: "comments",
+				let: { pId: "$_id" },
+				pipeline: [
+					{ $match: { $expr: { $eq: ["$postId", "$$pId"] } } },
+					{ $count: "count" },
+				],
+				as: "commentsCount",
+			},
+		},
+		{
+			$addFields: {
+				commentsCount: {
+					$ifNull: [{ $arrayElemAt: ["$commentsCount.count", 0] }, 0],
+				},
+			},
+		},
+
+		// 🟢 recent comments (آخر 2 أو 10 حسب اختيارك)
+		{
+			$lookup: {
+				from: "comments",
+				let: { pId: "$_id" },
+				pipeline: [
+					{ $match: { $expr: { $eq: ["$postId", "$$pId"] } } },
+					{ $sort: { createdAt: -1 } },
+					{ $limit: 2 },
+				],
+				as: "recentComments",
+			},
+		},
+
+		// 🟢 likes count + isLiked
+		{
+			$lookup: {
+				from: "likes",
+				let: { pId: "$_id" },
+				pipeline: [
+					{ $match: { $expr: { $eq: ["$postId", "$$pId"] } } },
+					{ $project: { usersIDs: { $ifNull: ["$usersIDs", []] } } },
+				],
+				as: "likesDocs",
+			},
+		},
+		{
+			$addFields: {
+				likesUsers: {
+					$reduce: {
+						input: "$likesDocs.usersIDs",
+						initialValue: [],
+						in: { $concatArrays: ["$$value", "$$this"] },
+					},
+				},
+			},
+		},
+		{
+			$addFields: {
+				likesCount: { $size: "$likesUsers" },
+				isLiked: {
+					$in: [new mongoose.Types.ObjectId(req.user?._id), "$likesUsers"],
+				},
+			},
+		},
+
+		// 🟢 cleanup
+		{
+			$project: {
+				...hide,
+				likesDocs: 0,
+				likesUsers: 0,
+			},
+		},
+	]);
+
+	return res.status(200).json({
+		success: true,
+		posts,
+	});
+});
+
 export default {
 	createPost,
 	deletePostById,

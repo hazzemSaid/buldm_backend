@@ -9,5 +9,20 @@
 		"**/node_modules/**": true,
 		"**/dist/**": true,
 		"**/build/**": true
-	  }
+	  },
+	  "search.exclude": {
+  "**/node_modules": true,
+  "**/dist": true,
+  "**/build": true
+},
+  "editor.quickSuggestions": {
+    "other": true,
+    "comments": false,
+    "strings": true
+  },
+  "editor.suggestOnTriggerCharacters": true,
+  "editor.parameterHints.enabled": true,
+  "javascript.suggest.enabled": true,
+  "typescript.suggest.enabled": true
+
 }

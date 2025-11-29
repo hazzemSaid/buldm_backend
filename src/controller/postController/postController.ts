@@ -16,10 +16,15 @@ import { validationResult } from "express-validator";
 import fs from "fs";
 import Fuse from "fuse.js";
 import mongoose from "mongoose";
+import { createClient } from "redis";
 import asyncWrapper from "../../middleware/asyncwrapper";
 import postModel from "../../model/postModel";
 import cloudinary from "../../utils/cloudinaryService";
 import ErrorHandler from "../../utils/error";
+const client = createClient();
+
+client.connect(); // لازم دايمًا
+
 /**
  * @interface Location
  * @description Interface defining the structure for location data in posts
@@ -241,7 +246,7 @@ const createPost = asyncWrapper(
 		// ]);
 
 
-
+		client.set(`post:${createdPost.id}`, JSON.stringify(createdPost));
 		return res.status(200).json({
 			success: true,
 			message: "Post created successfully",
@@ -251,7 +256,7 @@ const createPost = asyncWrapper(
 );
 
 const getPostById = asyncWrapper(
-	async (req: Request, res: Response, next: NextFunction) => {
+	async (req: any, res: Response, next: NextFunction) => {
 		const postId = req.params.id;
 		if (!postId) {
 			return res.status(400).json({
@@ -260,7 +265,6 @@ const getPostById = asyncWrapper(
 			});
 		}
 
-		const mongoose = require("mongoose");
 		if (!mongoose.Types.ObjectId.isValid(postId)) {
 			return res.status(400).json({
 				success: false,
@@ -268,132 +272,22 @@ const getPostById = asyncWrapper(
 			});
 		}
 
-		const postWithCounts = await postModel.aggregate([
-			{ $match: { _id: new mongoose.Types.ObjectId(postId) } },
-			{
-				$lookup: {
-					from: "reposts",
-					localField: "_id",
-					foreignField: "postId",
-					as: "reposts",
-				},
-			},
-			{
-				$addFields: {
-					repostsCount: { $size: "$reposts" },
-				},
-			},
-			{
-				$lookup: {
-					from: "users",
-					localField: "user_id",
-					foreignField: "_id",
-					as: "user",
-				},
-			},
-			{ $unwind: "$user" },
-			{
-				$project: {
-					"user.token": 0,
-					"user.refreshToken": 0,
-					"user.password": 0,
-					"user.verificationCode": 0,
-					"user.forgotPasswordToken": 0,
-					"user.verified": 0,
-					"user.createdAt": 0,
-					"user.updatedAt": 0,
-					"user.role": 0,
-					"user.__v": 0,
-					"user.email": 0,
-					"user.private": 0,
-					"user.backgroundImage": 0,
-					"user.bio": 0,
-				},
-			},
-			// Likes count
-			{
-				$lookup: {
-					from: "likes",
-					let: { pId: "$_id" },
-					pipeline: [
-						{ $match: { $expr: { $eq: ["$postId", "$$pId"] } } },
-						{ $project: { usersIDs: { $ifNull: ["$usersIDs", []] } } },
-					],
-					as: "likesDocs",
-				},
-			},
-			{
-				$addFields: {
-					likesCount: {
-						$size: {
-							$reduce: {
-								input: "$likesDocs.usersIDs",
-								initialValue: [],
-								in: { $concatArrays: ["$$value", "$$this"] },
-							},
-						},
-					},
-				},
-			},
-
-			// Comments count
-			{
-				$lookup: {
-					from: "comments",
-					let: { postId: "$_id" },
-					pipeline: [
-						{ $match: { $expr: { $eq: ["$postId", "$$postId"] } } },
-						{ $count: "count" },
-					],
-					as: "commentsCount",
-				},
-			},
-			{
-				$addFields: {
-					commentsCount: {
-						$ifNull: [{ $arrayElemAt: ["$commentsCount.count", 0] }, 0],
-					},
-				},
-			},
-
-			// Hide extra arrays
-			{
-				$project: {
-					likesDocs: 0,
-				},
-			},
-		]);
-
-		if (!postWithCounts || postWithCounts.length === 0) {
-			return res.status(404).json({
-				success: false,
-				message: "Post not found",
+		const cachedPost = await client.get(`post:${postId}`);
+		if (cachedPost && Object.keys(cachedPost).length > 0) {
+			return res.status(200).json({
+				success: true,
+				cache: true,
+				message: "Post retrieved successfully",
+				data: JSON.parse(cachedPost),
 			});
 		}
 
-		return res.status(200).json({
-			success: true,
-			message: "Post retrieved successfully",
-			data: postWithCounts[0], // ✅ return one document
-		});
-	}
-);
+		// Updated aggregation to match getAllPosts (adapted for single post)
+		const userId = new mongoose.Types.ObjectId(req.user._id); // Current user ID for isLiked check
+		const postWithCounts = await postModel.aggregate([
+			{ $match: { _id: new mongoose.Types.ObjectId(postId) } }, // Match specific post
 
-const getAllPosts = asyncWrapper(
-	async (req: any, res: Response, next: NextFunction) => {
-		const page = parseInt(req.query.page) || 1;
-		const limit = parseInt(req.query.limit) || 5;
-		const skip = (page - 1) * limit;
-		const userId = new mongoose.Types.ObjectId(req.user._id); // current user id
-
-		// sort newest first
-
-		const posts = await postModel.aggregate([
-			{ $sort: { createdAt: -1 } },
-			{ $skip: skip },
-			{ $limit: limit },
-
-			// 🟢 reposts
+			// 🟢 Reposts
 			{
 				$lookup: {
 					from: "reposts",
@@ -404,7 +298,7 @@ const getAllPosts = asyncWrapper(
 			},
 			{ $addFields: { repostsCount: { $size: "$reposts" } } },
 
-			// 🟢 user info
+			// 🟢 User info
 			{
 				$lookup: {
 					from: "users",
@@ -415,7 +309,7 @@ const getAllPosts = asyncWrapper(
 			},
 			{ $unwind: "$user" },
 
-			// 🟢 comments count
+			// 🟢 Comments count
 			{
 				$lookup: {
 					from: "comments",
@@ -435,7 +329,7 @@ const getAllPosts = asyncWrapper(
 				},
 			},
 
-			// 🟢 likes
+			// 🟢 Likes
 			{
 				$lookup: {
 					from: "likes",
@@ -461,11 +355,11 @@ const getAllPosts = asyncWrapper(
 			{
 				$addFields: {
 					likesCount: { $size: "$likesUsers" },
-					isLike: { $in: [userId, "$likesUsers"] }, // 🟢 add this
+					isLiked: { $in: [userId, "$likesUsers"] }, // Added for consistency with getAllPosts
 				},
 			},
 
-			// 🟢 cleanup
+			// 🟢 Cleanup (hide fields)
 			{
 				$project: {
 					likesDocs: 0,
@@ -488,19 +382,162 @@ const getAllPosts = asyncWrapper(
 			},
 		]);
 
-
-
-		//   if (!posts || posts.length === 0) {
-		// 	 const error = ErrorHandler.createError("No posts found", 404, "no data");
-		// 	 return next(error);
-		//   }
-
+		if (!postWithCounts || postWithCounts.length === 0) {
+			return res.status(404).json({
+				success: false,
+				message: "Post not found",
+			});
+		}
+		await client.set(`post:${postId}`, JSON.stringify(postWithCounts[0]));
 		return res.status(200).json({
 			success: true,
-			message: "Posts retrieved successfully",
-			data: posts,
+			message: "Post retrieved successfully",
+			data: postWithCounts[0], // ✅ return one document
 		});
 	}
+);
+
+const getAllPosts = asyncWrapper(
+	async (req: any, res: Response, next: NextFunction) => {
+  const page = parseInt(req.query.page as string) || 1;
+    const limit = parseInt(req.query.limit as string) || 5;
+    const skip = (page - 1) * limit;
+    const userId = new mongoose.Types.ObjectId((req.user as any)._id);
+
+const cacheKey = `postsList?skip=${skip}&limit=${limit}`;
+
+    // ✅ check cache
+    const cachedPosts = await client.get(cacheKey);
+if (cachedPosts) {
+  const posts = JSON.parse(cachedPosts);
+  return res.status(200).json({
+    success: true,
+    cache: true,
+    message: "Posts retrieved successfully",
+    data: posts,
+  });
+}
+
+
+    // ✅ fetch from MongoDB
+    const posts = await postModel.aggregate([
+      { $sort: { createdAt: -1 } },
+      { $skip: skip },
+      { $limit: limit },
+
+      // reposts
+      {
+        $lookup: {
+          from: "reposts",
+          localField: "_id",
+          foreignField: "postId",
+          as: "reposts",
+        },
+      },
+      { $addFields: { repostsCount: { $size: "$reposts" } } },
+
+      // user info
+      {
+        $lookup: {
+          from: "users",
+          localField: "user_id",
+          foreignField: "_id",
+          as: "user",
+        },
+      },
+      { $unwind: "$user" },
+
+      // comments count
+      {
+        $lookup: {
+          from: "comments",
+          let: { postId: "$_id" },
+          pipeline: [
+            { $match: { $expr: { $eq: ["$postId", "$$postId"] } } },
+            { $count: "count" },
+          ],
+          as: "commentsCount",
+        },
+      },
+      {
+        $addFields: {
+          commentsCount: {
+            $ifNull: [{ $arrayElemAt: ["$commentsCount.count", 0] }, 0],
+          },
+        },
+      },
+
+      // likes
+      {
+        $lookup: {
+          from: "likes",
+          let: { pId: "$_id" },
+          pipeline: [
+            { $match: { $expr: { $eq: ["$postId", "$$pId"] } } },
+            { $project: { usersIDs: { $ifNull: ["$usersIDs", []] } } },
+          ],
+          as: "likesDocs",
+        },
+      },
+      {
+        $addFields: {
+          likesUsers: {
+            $reduce: {
+              input: "$likesDocs.usersIDs",
+              initialValue: [],
+              in: { $concatArrays: ["$$value", "$$this"] },
+            },
+          },
+        },
+      },
+      {
+        $addFields: {
+          likesCount: { $size: "$likesUsers" },
+          isLike: { $in: [userId, "$likesUsers"] },
+        },
+      },
+
+      // cleanup
+      {
+        $project: {
+          likesDocs: 0,
+          likesUsers: 0,
+          "user.token": 0,
+          "user.refreshToken": 0,
+          "user.password": 0,
+          "user.verificationCode": 0,
+          "user.forgotPasswordToken": 0,
+          "user.verified": 0,
+          "user.createdAt": 0,
+          "user.updatedAt": 0,
+          "user.role": 0,
+          "user.__v": 0,
+          "user.email": 0,
+          "user.private": 0,
+          "user.backgroundImage": 0,
+          "user.bio": 0,
+        },
+      },
+    ]);
+
+    if (!posts || posts.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "No posts found",
+      });
+    }
+
+    // ✅ store in Redis list + set TTL
+    await client.set(cacheKey, JSON.stringify(posts), { EX: 600}); // 10 دقائق TTL
+
+
+    return res.status(200).json({
+      success: true,
+      cache: false,
+      message: "Posts retrieved successfully",
+      data: posts,
+    });
+  }
 );
 
 
